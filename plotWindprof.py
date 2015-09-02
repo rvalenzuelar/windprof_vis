@@ -10,151 +10,184 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-# import matplotlib as mpl
-import matplotlib.dates as mdates
-from datetime import timedelta
 import matplotlib.ticker as mtick
 
 import numpy as np
 import os 
-# import datetime as dt
 import sys
 
-import Thermodyn as thermo
 import Meteoframes as mf
 
+from datetime import timedelta
+from matplotlib import colors
+
+
 ''' set directory and input files '''
-# base_directory='/home/rvalenzuela/WINDPROF'
-base_directory='/Users/raulv/Desktop/WINDPROF'
+base_directory='/home/rvalenzuela/WINDPROF'
+# base_directory='/Users/raulv/Desktop/WINDPROF'
 print base_directory
-usr_case = raw_input('\nIndicate case number (i.e. 1): ')
-case='case'+usr_case.zfill(2)
-casedir=base_directory+'/'+case
-out=os.listdir(casedir)
-out.sort()
-file_sound=[]
-for f in out:
-	if f[-1:]=='w': 
-		file_sound.append(casedir+'/'+f)
+
 
 def main():
-	wpf=[] 
-	wpc=[]
-	ncols=0 # number of timestamps
-	for f in file_sound:
-		wpf.append(mf.parse_windprof(f,'fine'))
-		wpc.append(mf.parse_windprof(f,'coarse'))
-		ncols+=1
 
-	nrows = len(wpf[0].HT.values) # number of altitude gates (fine=coarse)
-	hgt_fine = wpf[0].HT.values
-	hgt_coar = wpc[0].HT.values
-	spd_fine = np.empty([nrows,ncols])
-	dir_fine = np.empty([nrows,ncols])
-	spd_coar = np.empty([nrows,ncols])
-	dir_coar = np.empty([nrows,ncols])
-	timestamp = []
-	for pf,pc,i in zip(wpf,wpc,range(ncols)):
-		timestamp.append(pf.timestamp)	
-		''' fine resolution '''
-		spdf=pf.SPD.values
-		spd_fine[:,i]=spdf 		 
-		dirf=pf.DIR.values
-		dir_fine[:,i]=dirf
+	''' get wind profiler file names '''
+	wpfiles = get_filenames()
 
-		''' coarse resolution '''
-		spdc=pc.SPD.values
-		spd_coar[:,i]=spdc
-		dirc=pc.DIR.values
-		dir_coar[:,i]=dirc
+	''' make arrays '''
+	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='fine')
 	
+	ax=plot_time_height(wspd,wdir,time,hgt,vrange=[2,20])
+	color=[0.2,0.2,0.2]
+	# add_windstaff(ax,wspd,wdir,time,hgt,color=color)
+
+	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='coarse')
+	plot_time_height(wspd,wdir,time,hgt,vrange=[2,20])
+
+	plt.show(block=False)
 
 
+def get_filenames():
 
-	''' add last column for 00 UTC of
-	last date and 2 bottom rows for adding surface obs'''
-	add_left=1
-	na = np.zeros((nrows,add_left))
-	na[:] = np.nan
-	spd_fine =np.hstack((spd_fine,na))
-	add_bottom=2
-	na = np.zeros((add_bottom,ncols+add_left))
-	na[:] = np.nan
-	spd_fine = np.flipud(np.vstack((np.flipud(spd_fine),na)))
-	hgt_fine = np.hstack(([0.,0.05],hgt_fine))
+	usr_case = raw_input('\nIndicate case number (i.e. 1): ')
+	case='case'+usr_case.zfill(2)
+	casedir=base_directory+'/'+case
+	out=os.listdir(casedir)
+	out.sort()
+	file_sound=[]
+	for f in out:
+		if f[-1:]=='w': 
+			file_sound.append(casedir+'/'+f)
+	return file_sound
 
+def plot_time_height(spd_array,dir_array,time_array,height_array,**kwargs):
 
-
-	
-
+	vrange=kwargs['vrange']
 
 	''' creates plot with seaborn style '''
 	with sns.axes_style("ticks"):
 		f, ax = plt.subplots(figsize=(11,8.5))
 
-	im=ax.imshow(spd_fine,interpolation='nearest',cmap="RdYlBu_r",vmin=0,vmax=20,origin='bottom')
-	
-	''' format yticks '''	
-	old_yticks = ax.get_yticks()
-	new_yticks=[]
-	for yt in old_yticks:
-		if int(yt)< 0:
-			new_yticks.append(-1)
-		elif int(yt) == 0 and add_bottom == 0:
-			new_yticks.append(np.around(hgt_fine[int(yt)],decimals=2))
-		elif int(yt) == 0 and add_bottom > 0:
-			new_yticks.append(0)
-		elif int(yt)<40:
-			new_yticks.append(np.around(hgt_fine[int(yt)],decimals=2))
-		else:
-			new_yticks.append(np.around(hgt_fine[-1],decimals=2))	
-	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
-	ax.set_yticklabels(new_yticks)
+	''' make a color map of fixed colors '''
+	snsmap=sns.color_palette("YlGnBu_r", 20)
+	cmap = colors.ListedColormap(snsmap[2:-1])
+	vdelta=2
+	bounds=range(vrange[0],vrange[1]+vdelta, vdelta)
+	norm = colors.BoundaryNorm(bounds, cmap.N)
 
-	''' format xticks '''
+	img = plt.imshow(spd_array, interpolation='nearest', origin='lower',
+						cmap=cmap, norm=norm,vmin=vrange[0],vmax=vrange[1])
+	plt.colorbar(img, cmap=cmap, norm=norm, 
+				boundaries=bounds[1:], ticks=bounds[1:])
+	ax.set_xlim([-1,48])
+	ax.set_ylim([0,39])
+	format_xaxis(ax,time_array)
+	format_yaxis(ax,height_array)
+	plt.gca().invert_xaxis()
+	plt.ylabel('Range hight [km]')
+	plt.xlabel(r'$\Leftarrow$'+' Time [UTC]')
+
+	plt.draw()
+
+	return ax
+
+def make_arrays(**kwargs):
+
+	file_sound = kwargs['files']
+	resolution = kwargs['resolution']
+
+	wp=[] 
+	ncols=0 # number of timestamps
+	for f in file_sound:
+		if resolution=='fine':
+			wp.append(mf.parse_windprof(f,'fine'))
+		elif resolution=='coarse':
+			wp.append(mf.parse_windprof(f,'coarse'))
+		ncols+=1
+
+	''' creates 2D arrays with spd and dir '''
+	nrows = len(wp[0].HT.values) # number of altitude gates (fine=coarse)
+	hgt = wp[0].HT.values
+	wspd = np.empty([nrows,ncols])
+	wdir = np.empty([nrows,ncols])
+	timestamp = []
+	for i,p in enumerate(wp):
+		timestamp.append(p.timestamp)	
+		''' fine resolution '''
+		spd=p.SPD.values
+		wspd[:,i]=spd
+		dirr=p.DIR.values
+		wdir[:,i]=dirr
+
+	''' add last column for 00 UTC of last date '''
+	add_left=1
+	na = np.zeros((nrows,add_left))
+	na[:] = np.nan
+	wspd =np.hstack((wspd,na))
+	wdir =np.hstack((wdir,na))
+	timestamp.append(timestamp[-1]+timedelta(hours=1))
+
+	''' add 2 bottom rows for adding surface obs '''
+	add_bottom=2
+	na = np.zeros((add_bottom,ncols+add_left))
+	na[:] = np.nan
+	wspd = np.flipud(np.vstack((np.flipud(wspd),na)))
+	wdir = np.flipud(np.vstack((np.flipud(wdir),na)))
+	hgt = np.hstack(([0.,0.05],hgt))
+
+	return wspd,wdir,timestamp,hgt
+
+def add_windstaff(ax,wspd,wdir,time,hgt,**kwargs):
+
+	if kwargs and kwargs['color']:
+		color=kwargs['color']
+	else:
+		color='k'
+
+	''' derive U and V components '''
+	U=-wspd*np.sin(wdir*np.pi/180.)
+	V=-wspd*np.cos(wdir*np.pi/180.)
+	x=np.array(range(len(time)))
+	y=np.array(range(hgt.size))
+	X=np.tile(x,(y.size,1))
+	Y=np.tile(y,(x.size,1)).T	
+	Uzero = U-U
+	Vzero = V-V
+
+	ax.barbs(X,Y,U,V,color=color, sizes={'height':0},length=5,linewidth=0.5)
+	ax.barbs(X,Y,Uzero,Vzero,color=color, sizes={'emptybarb':0.05},fill_empty=True)
+
+def format_xaxis(ax,time):
+
 	date_fmt='%d\n%H'
-	new_xticks=range(len(timestamp)+1)
+	new_xticks=range(len(time))
 	xtlabel=[]
-	for t in timestamp:
+	for t in time:
 		if np.mod(t.hour,3) == 0:
 			xtlabel.append(t.strftime(date_fmt))
 		else:
 			xtlabel.append('')
-	last_hour=timestamp[-1]+timedelta(hours=1)
-	date_fmt='day %d\n hour %H'
-	xtlabel.append(last_hour.strftime(date_fmt))
 	ax.set_xticks(new_xticks)
 	ax.set_xticklabels(xtlabel)
 
-	plt.colorbar(im)
-	plt.gca().invert_xaxis()
+def format_yaxis(ax,hgt):
 
-	plt.ylabel('Range hight [km]')
-	start_day=str(timestamp[0].day)
-	end_day=str(timestamp[-1].day)
+	new_yticks=range(hgt.size)
 
-	# plt.text(48,-4,end_day,horizontalalignment='center')
-	# plt.text(0,-4,start_day,horizontalalignment='center')
-	plt.xlabel(r'$\Leftarrow$'+' Time [UTC]')
-
-	plt.show(block=False)
+	new_labels=[]
+	for t in new_yticks:
+		if np.mod(t,5)==0:
+			new_labels.append(np.around(hgt[t],decimals=2))
+		else:
+			new_labels.append(' ')
 
 
+	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
+	ax.set_yticks(new_yticks)
+	ax.set_yticklabels(new_labels)
 
-def plot(array):
 
-	fig,ax=plt.subplots()
-	ax.imshow(array)
-
-	plt.show()
-
+''' start '''
 main()
-
-
-
-
-
-
 
 
 
