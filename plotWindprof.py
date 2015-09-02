@@ -26,29 +26,28 @@ from matplotlib import colors
 base_directory='/home/rvalenzuela/WINDPROF'
 # base_directory='/Users/raulv/Desktop/WINDPROF'
 print base_directory
-
+usr_case = raw_input('\nIndicate case number (i.e. 1): ')
 
 def main():
 
 	''' get wind profiler file names '''
 	wpfiles = get_filenames()
 
-	''' make arrays '''
-	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='fine')
+	''' make profile arrays '''
+	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='fine',surface=True)
 	
 	ax=plot_time_height(wspd,wdir,time,hgt,vrange=[2,20])
 	color=[0.2,0.2,0.2]
 	# add_windstaff(ax,wspd,wdir,time,hgt,color=color)
 
-	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='coarse')
-	plot_time_height(wspd,wdir,time,hgt,vrange=[2,20])
+	# wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='coarse')
+	# plot_time_height(wspd,wdir,time,hgt,vrange=[2,20])
 
 	plt.show(block=False)
 
 
 def get_filenames():
 
-	usr_case = raw_input('\nIndicate case number (i.e. 1): ')
 	case='case'+usr_case.zfill(2)
 	casedir=base_directory+'/'+case
 	out=os.listdir(casedir)
@@ -58,6 +57,38 @@ def get_filenames():
 		if f[-1:]=='w': 
 			file_sound.append(casedir+'/'+f)
 	return file_sound
+
+def get_surface_data():
+
+	''' set directory and input files '''
+	base_directory='/home/rvalenzuela/SURFACE'
+	case='case'+usr_case.zfill(2)
+	casedir=base_directory+'/'+case
+	out=os.listdir(casedir)
+	out.sort()
+	files=[]
+	for f in out:
+		if f[-3:]=='met': 
+			files.append(f)
+	file_met=[]
+	for f in files:
+		if f[:3]=='bby':
+			file_met.append(casedir+'/'+f)
+	name_field=['press','temp','rh','wspd','wdir','precip','mixr']
+	index_field=[3,6,9,10,12,17,26]
+	locname='Bodega Bay'
+	locelevation = 15 # [m]
+
+	df=[]
+	for f in file_met:
+		df.append(mf.parse_surface(f,index_field,name_field,locelevation))
+
+	if len(df)>1:
+		surface=pd.concat(df)
+	else:
+		surface=df[0]
+
+	return surface
 
 def plot_time_height(spd_array,dir_array,time_array,height_array,**kwargs):
 
@@ -94,6 +125,14 @@ def make_arrays(**kwargs):
 
 	file_sound = kwargs['files']
 	resolution = kwargs['resolution']
+	surface = kwargs['surface']
+
+	if surface:
+		''' make surface arrays '''
+		surface = get_surface_data()
+		hour=pd.TimeGrouper('H')
+		surf_wspd = surface.wspd.groupby(hour).mean()	
+		surf_wdir = surface.wdir.groupby(hour).mean()	
 
 	wp=[] 
 	ncols=0 # number of timestamps
