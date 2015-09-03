@@ -22,6 +22,7 @@ from datetime import timedelta
 from matplotlib import colors
 
 
+
 ''' set directory and input files '''
 base_directory='/home/rvalenzuela/WINDPROF'
 # base_directory='/Users/raulv/Desktop/WINDPROF'
@@ -36,12 +37,22 @@ def main():
 	''' make profile arrays '''
 	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='fine',surface=True)
 	
-	ax=plot_time_height(wspd,wdir,time,hgt,vrange=[2,20])
-	color=[0.2,0.2,0.2]
-	# add_windstaff(ax,wspd,wdir,time,hgt,color=color)
+	''' make time-height section of total wind speed '''
+	ax=plot_time_height(wspd, time, hgt, vrange=[0,20],cname='YlGnBu_r',title='Total wind speed')
 
-	# wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='coarse')
-	# plot_time_height(wspd,wdir,time,hgt,vrange=[2,20])
+	''' add wind staffs '''
+	palette = sns.color_palette()
+	color=palette[2]
+	u,v = add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
+
+	''' make time-height section of meridional wind speed '''
+	ax=plot_time_height(v, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Meridional component')
+	add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
+	
+	''' make time-height section of zonal wind speed '''
+	ax=plot_time_height(u, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Zonal component')
+	add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
+
 
 	plt.show(block=False)
 
@@ -75,7 +86,10 @@ def get_surface_data():
 		if f[:3]=='bby':
 			file_met.append(casedir+'/'+f)
 	name_field=['press','temp','rh','wspd','wdir','precip','mixr']
-	index_field=[3,6,9,10,12,17,26]
+	if usr_case =='3':
+		index_field=[3,6,9,10,12,17,26]
+	elif usr_case == '13':
+		index_field=[3,4,5,6,8,13,15]
 	locname='Bodega Bay'
 	locelevation = 15 # [m]
 
@@ -90,33 +104,46 @@ def get_surface_data():
 
 	return surface
 
-def plot_time_height(spd_array,dir_array,time_array,height_array,**kwargs):
+def plot_time_height(spd_array,time_array,height_array,**kwargs):
 
 	vrange=kwargs['vrange']
+	cname=kwargs['cname']
+	title=kwargs['title']
 
 	''' creates plot with seaborn style '''
 	with sns.axes_style("ticks"):
 		f, ax = plt.subplots(figsize=(11,8.5))
 
 	''' make a color map of fixed colors '''
-	snsmap=sns.color_palette("YlGnBu_r", 20)
-	cmap = colors.ListedColormap(snsmap[2:-1])
-	vdelta=2
-	bounds=range(vrange[0],vrange[1]+vdelta, vdelta)
+	snsmap=sns.color_palette(cname, 24)
+	cmap = colors.ListedColormap(snsmap[2:])
+	if len(vrange) == 2:
+		vdelta=2
+		bounds=range(vrange[0],vrange[1]+vdelta, vdelta)
+		vmin=vrange[0]
+		vmax=vrange[1]
+	else:
+		bounds=vrange
+		vmin=vrange[0]
+		vmax=vrange[-1]
 	norm = colors.BoundaryNorm(bounds, cmap.N)
 
 	img = plt.imshow(spd_array, interpolation='nearest', origin='lower',
-						cmap=cmap, norm=norm,vmin=vrange[0],vmax=vrange[1])
-	plt.colorbar(img, cmap=cmap, norm=norm, 
-				boundaries=bounds[1:], ticks=bounds[1:])
+						cmap=cmap, norm=norm,vmin=vmin,vmax=vmax)
+	cb = plt.colorbar(img, cmap=cmap, norm=norm, 
+				boundaries=bounds, ticks=bounds, label='m s-1',fraction=0.046,pad=0.04)
+
 	ax.set_xlim([-1,48])
-	ax.set_ylim([0,39])
+	ax.set_ylim([-2,40])
 	format_xaxis(ax,time_array)
 	format_yaxis(ax,height_array)
 	plt.gca().invert_xaxis()
 	plt.ylabel('Range hight [km]')
 	plt.xlabel(r'$\Leftarrow$'+' Time [UTC]')
-
+	l1 = 'BBY wind profiler - '+title
+	l2 = '\nStart: '+time_array[0].strftime('%Y-%m-%d %H:%M UTC')
+	l3 = '\nEnd: '+time_array[-2].strftime('%Y-%m-%d %H:%M UTC')
+	plt.suptitle(l1+l2+l3)
 	plt.draw()
 
 	return ax
@@ -157,30 +184,34 @@ def make_arrays(**kwargs):
 		dirr=p.DIR.values
 		wdir[:,i]=dirr
 
+	''' add 2 bottom rows for adding surface obs '''
+	bottom_rows=2
+	na = np.zeros((bottom_rows,ncols))
+	na[:] = np.nan
+	wspd = np.flipud(np.vstack((np.flipud(wspd),na)))
+	wdir = np.flipud(np.vstack((np.flipud(wdir),na)))
+	wspd[0,:]=surf_wspd
+	wdir[0,:]=surf_wdir
+	hgt = np.hstack(([0.,0.05],hgt))
+
 	''' add last column for 00 UTC of last date '''
 	add_left=1
+	nrows, _ = wspd.shape
 	na = np.zeros((nrows,add_left))
 	na[:] = np.nan
 	wspd =np.hstack((wspd,na))
 	wdir =np.hstack((wdir,na))
 	timestamp.append(timestamp[-1]+timedelta(hours=1))
 
-	''' add 2 bottom rows for adding surface obs '''
-	add_bottom=2
-	na = np.zeros((add_bottom,ncols+add_left))
-	na[:] = np.nan
-	wspd = np.flipud(np.vstack((np.flipud(wspd),na)))
-	wdir = np.flipud(np.vstack((np.flipud(wdir),na)))
-	hgt = np.hstack(([0.,0.05],hgt))
-
 	return wspd,wdir,timestamp,hgt
 
-def add_windstaff(ax,wspd,wdir,time,hgt,**kwargs):
+def add_windstaff(wspd,wdir,time,hgt,**kwargs):
 
 	if kwargs and kwargs['color']:
 		color=kwargs['color']
 	else:
 		color='k'
+	ax = kwargs['ax'] 
 
 	''' derive U and V components '''
 	U=-wspd*np.sin(wdir*np.pi/180.)
@@ -192,8 +223,10 @@ def add_windstaff(ax,wspd,wdir,time,hgt,**kwargs):
 	Uzero = U-U
 	Vzero = V-V
 
-	ax.barbs(X,Y,U,V,color=color, sizes={'height':0},length=5,linewidth=0.5)
+	ax.barbs(X,Y,U,V,color=color, sizes={'height':0},length=5,linewidth=0.5,barb_increments={'half':1})
 	ax.barbs(X,Y,Uzero,Vzero,color=color, sizes={'emptybarb':0.05},fill_empty=True)
+
+	return U,V
 
 def format_xaxis(ax,time):
 
