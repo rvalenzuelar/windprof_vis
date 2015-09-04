@@ -53,7 +53,6 @@ def main():
 	ax=plot_time_height(u, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Zonal component')
 	add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
 
-
 	plt.show(block=False)
 
 
@@ -106,6 +105,10 @@ def get_surface_data():
 
 def plot_time_height(spd_array,time_array,height_array,**kwargs):
 
+	''' NOAA wind profiler files after year 2000 indicate 
+	the start time of averaging period; so a timestamp of
+	13 UTC indicates average between 13 and 14 UTC '''
+
 	vrange=kwargs['vrange']
 	cname=kwargs['cname']
 	title=kwargs['title']
@@ -128,13 +131,16 @@ def plot_time_height(spd_array,time_array,height_array,**kwargs):
 		vmax=vrange[-1]
 	norm = colors.BoundaryNorm(bounds, cmap.N)
 
+	nrows,ncols = spd_array.shape
 	img = plt.imshow(spd_array, interpolation='nearest', origin='lower',
-						cmap=cmap, norm=norm,vmin=vmin,vmax=vmax)
+						cmap=cmap, norm=norm,vmin=vmin,vmax=vmax,
+						extent=[0,ncols,0,nrows]) #extent helps to make correct timestamp
+	
 	cb = plt.colorbar(img, cmap=cmap, norm=norm, 
 				boundaries=bounds, ticks=bounds, label='m s-1',fraction=0.046,pad=0.04)
 
-	ax.set_xlim([-1,48])
-	ax.set_ylim([-2,40])
+	# ax.set_xlim([-1,48])
+	# ax.set_ylim([-2,40])
 	format_xaxis(ax,time_array)
 	format_yaxis(ax,height_array)
 	plt.gca().invert_xaxis()
@@ -216,10 +222,10 @@ def add_windstaff(wspd,wdir,time,hgt,**kwargs):
 	''' derive U and V components '''
 	U=-wspd*np.sin(wdir*np.pi/180.)
 	V=-wspd*np.cos(wdir*np.pi/180.)
-	x=np.array(range(len(time)))
-	y=np.array(range(hgt.size))
-	X=np.tile(x,(y.size,1))
-	Y=np.tile(y,(x.size,1)).T	
+	x=np.array(range(len(time)))+0.5 # wind staff in the middle of pixel
+	y=np.array(range(hgt.size))+0.5 # wind staff in the middle of pixel
+	X=np.tile(x,(y.size,1)) # repeats x y.size times to make 2D array
+	Y=np.tile(y,(x.size,1)).T #repeates y x.size times to make 2D array
 	Uzero = U-U
 	Vzero = V-V
 
@@ -243,8 +249,7 @@ def format_xaxis(ax,time):
 
 def format_yaxis(ax,hgt):
 
-	new_yticks=range(hgt.size)
-
+	new_yticks=np.asarray(range(hgt.size))
 	new_labels=[]
 	for t in new_yticks:
 		if np.mod(t,5)==0:
@@ -254,7 +259,7 @@ def format_yaxis(ax,hgt):
 
 
 	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
-	ax.set_yticks(new_yticks)
+	ax.set_yticks(new_yticks+0.5)  # tick in the middle of the pixel
 	ax.set_yticklabels(new_labels)
 
 
