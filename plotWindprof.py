@@ -21,28 +21,28 @@ import Meteoframes as mf
 from datetime import timedelta
 from matplotlib import colors
 
-
-
 ''' set directory and input files '''
 base_directory='/home/rvalenzuela/WINDPROF'
 # base_directory='/Users/raulv/Desktop/WINDPROF'
-print base_directory
-usr_case = raw_input('\nIndicate case number (i.e. 1): ')
-wprof_resmod = raw_input('\nIndicate resolution mode (f = fine; c = coarse): ')
 
 def main():
 
+
+	print base_directory
+	usr_case = raw_input('\nIndicate case number (i.e. 1): ')
+	wprof_resmod = raw_input('\nIndicate resolution mode (f = fine; c = coarse): ')
+
 	''' get wind profiler file names '''
-	wpfiles = get_filenames()
+	wpfiles = get_filenames(usr_case)
 
 	''' make profile arrays '''
 	if wprof_resmod == 'f':
-		res='fine'
+		res='fine' # 60 [m]
 	elif wprof_resmod == 'c':
-		res='coarse'
+		res='coarse' # 100 [m]
 	else:
 		print 'Error: indicate correct resolution (f or c)'
-	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution=res,surface=True)
+	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution=res,surface=False,case=usr_case)
 	
 	''' make time-height section of total wind speed '''
 	ax=plot_time_height(wspd, time, hgt, vrange=[0,20],cname='YlGnBu_r',title='Total wind speed')
@@ -64,7 +64,7 @@ def main():
 	plt.show()
 
 
-def get_filenames():
+def get_filenames(usr_case):
 
 	case='case'+usr_case.zfill(2)
 	casedir=base_directory+'/'+case
@@ -76,7 +76,7 @@ def get_filenames():
 			file_sound.append(casedir+'/'+f)
 	return file_sound
 
-def get_surface_data():
+def get_surface_data(usr_case):
 
 	''' set directory and input files '''
 	base_directory='/home/rvalenzuela/SURFACE'
@@ -170,7 +170,8 @@ def make_arrays(**kwargs):
 
 	if surface:
 		''' make surface arrays '''
-		surface = get_surface_data()
+		case = kwargs['case']
+		surface = get_surface_data(case)
 		hour=pd.TimeGrouper('H')
 		surf_wspd = surface.wspd.groupby(hour).mean()	
 		surf_wdir = surface.wdir.groupby(hour).mean()	
@@ -182,6 +183,8 @@ def make_arrays(**kwargs):
 			wp.append(mf.parse_windprof(f,'fine'))
 		elif resolution=='coarse':
 			wp.append(mf.parse_windprof(f,'coarse'))
+		else:
+			print 'Error: resolution has to be "fine" or "coarse"'
 		ncols+=1
 
 	''' creates 2D arrays with spd and dir '''
@@ -204,8 +207,9 @@ def make_arrays(**kwargs):
 	na[:] = np.nan
 	wspd = np.flipud(np.vstack((np.flipud(wspd),na)))
 	wdir = np.flipud(np.vstack((np.flipud(wdir),na)))
-	wspd[0,:]=surf_wspd
-	wdir[0,:]=surf_wdir
+	if surface:
+		wspd[0,:]=surf_wspd
+		wdir[0,:]=surf_wdir
 	hgt = np.hstack(([0.,0.05],hgt))
 
 	''' add last column for 00 UTC of last date '''
@@ -272,7 +276,8 @@ def format_yaxis(ax,hgt):
 
 
 ''' start '''
-main()
+if __name__ == "__main__":
+	main()
 
 
 
