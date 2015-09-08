@@ -28,6 +28,7 @@ base_directory='/home/rvalenzuela/WINDPROF'
 # base_directory='/Users/raulv/Desktop/WINDPROF'
 print base_directory
 usr_case = raw_input('\nIndicate case number (i.e. 1): ')
+wprof_resmod = raw_input('\nIndicate resolution mode (f = fine; c = coarse): ')
 
 def main():
 
@@ -35,7 +36,13 @@ def main():
 	wpfiles = get_filenames()
 
 	''' make profile arrays '''
-	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution='fine',surface=True)
+	if wprof_resmod == 'f':
+		res='fine'
+	elif wprof_resmod == 'c':
+		res='coarse'
+	else:
+		print 'Error: indicate correct resolution (f or c)'
+	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution=res,surface=True)
 	
 	''' make time-height section of total wind speed '''
 	ax=plot_time_height(wspd, time, hgt, vrange=[0,20],cname='YlGnBu_r',title='Total wind speed')
@@ -53,7 +60,8 @@ def main():
 	ax=plot_time_height(u, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Zonal component')
 	add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
 
-	plt.show(block=False)
+	# plt.show(block=False)
+	plt.show()
 
 
 def get_filenames():
