@@ -26,18 +26,17 @@ from matplotlib import colors
 base_directory='/home/rvalenzuela/WINDPROF'
 # base_directory='/Users/raulv/Desktop/WINDPROF'
 
+usr_case=None
+
 def main():
 
-
 	print base_directory
+	global usr_case
 	usr_case = raw_input('\nIndicate case number (i.e. 1): ')
 	wprof_resmod = raw_input('\nIndicate resolution mode (f = fine; c = coarse): ')
 
 	''' get wind profiler file names '''
-	wpfiles = get_filenames(usr_case)
-
-	''' call 2D array made from soundings '''
-	sarray,shgt, stimestamp = ps.get_interp_array('DD',case=usr_case)	
+	wpfiles = get_filenames()
 
 	''' make profile arrays '''
 	if wprof_resmod == 'f':
@@ -46,37 +45,41 @@ def main():
 		res='coarse' # 100 [m]
 	else:
 		print 'Error: indicate correct resolution (f or c)'
-	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution=res,surface=True,case=usr_case)
-	
+	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution=res,surface=True)
+
+
 	''' make time-height section of total wind speed '''
-	ax=plot_time_height(wspd, time, hgt, vrange=[0,20],cname='YlGnBu_r',title='Total wind speed')
+	ax=plot_time_height(wspd, wdir, time, hgt, vrange=[0,20],cname='YlGnBu_r',
+											title='Total wind speed',
+											with_sounding='bvf_dry',
+											with_windstaff=False)
 
-	''' add interpolated sounding array '''
-	add_sounding_array(sarray,shgt,stimestamp,ax=ax,wptime=time)
+	''' make time-height section of total wind speed '''
+	ax=plot_time_height(wspd, wdir, time, hgt, vrange=[0,20],cname='YlGnBu_r',
+											title='Total wind speed',
+											with_sounding='bvf_moist',
+											with_windstaff=False)
 
-	''' add wind staffs '''
-	palette = sns.color_palette()
-	color=palette[2]
-	add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
-
-	''' get wind components '''
+	# ''' get wind components '''
 	# U,V=get_wind_components(wspd,wdir)
 
-	''' make time-height section of meridional wind speed '''
-	# ax=plot_time_height(V, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Meridional component')
-	# add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
-	# add_sounding_array(sarray,shgt,stimestamp,ax=ax,wptime=time)
+	# ''' make time-height section of meridional wind speed '''
+	# ax=plot_time_height(V, wdir, time, hgt, vrange=range(-20,22,2),cname='BrBG',
+	# 									title='Meridional component',
+	# 									with_sounding='v',
+	# 									with_windstaff=False)
 	
-	''' make time-height section of zonal wind speed '''
-	# ax=plot_time_height(U, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Zonal component')
-	# add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
-	# add_sounding_array(sarray,shgt,stimestamp,ax=ax,wptime=time)
+	# ''' make time-height section of zonal wind speed '''
+	# ax=plot_time_height(U, wdir, time, hgt, vrange=range(-20,22,2),cname='BrBG',
+	# 									title='Zonal component',
+	# 									with_sounding='u',
+	# 									with_windstaff=False)										
 
-	# plt.show(block=False)
-	plt.show()
+	plt.show(block=False)
+	# plt.show()
 
 
-def plot_time_height(spd_array,time_array,height_array,**kwargs):
+def plot_time_height(spd_array, dir_array, time_array,height_array,**kwargs):
 
 	''' NOAA wind profiler files after year 2000 indicate 
 	the start time of averaging period; so a timestamp of
@@ -85,6 +88,8 @@ def plot_time_height(spd_array,time_array,height_array,**kwargs):
 	vrange=kwargs['vrange']
 	cname=kwargs['cname']
 	title=kwargs['title']
+	soundvar=kwargs['with_sounding']
+	windstaff=kwargs['with_windstaff']
 
 	''' creates plot with seaborn style '''
 	with sns.axes_style("ticks"):
@@ -105,32 +110,57 @@ def plot_time_height(spd_array,time_array,height_array,**kwargs):
 	norm = colors.BoundaryNorm(bounds, cmap.N)
 
 	nrows,ncols = spd_array.shape
+	extent=[0,ncols,-0.05,3.95] #extent helps to make correct timestamp
 	img = ax.imshow(spd_array, interpolation='nearest', origin='lower',
 						cmap=cmap, norm=norm,vmin=vmin,vmax=vmax,
-						extent=[0,ncols,0,3.8], #extent helps to make correct timestamp
-						aspect='auto') 
+						extent=extent,aspect='auto') 
 	
 	cb = plt.colorbar(img, cmap=cmap, norm=norm, 
 				boundaries=bounds, ticks=bounds, label='m s-1',fraction=0.046,pad=0.04)
 
-
-	# format_xaxis(ax,time_array)
-	# plt.xticks(time_array)
+	ax.set_ylim([-0.1,3.95])
+	format_yaxis(ax,height_array)
 	ax.set_xticks(range(0,49*3,9))
+	format_xaxis(ax,time_array)	
+	
+	if soundvar:
+		''' call 2D array made from soundings '''
+		sarray,shgt, stimestamp = ps.get_interp_array(soundvar,case=usr_case)
+		if soundvar in ['TE','TD']:
+			sarray=sarray-273.15
+		elif soundvar in ['bvf_moist','bvf_dry']:
+			sarray=sarray*10000.
+		''' add interpolated sounding array '''
+		add_sounding_array(sarray,shgt,stimestamp,ax=ax,wptime=time_array,var=soundvar)
+		l1 = 'BBY wind profiler - '+title+' (color coded)'
+		vartitle={'thetaeq':'Eq. potential temperature [K]',
+				'theta':'Potential temperature [K]',
+				'RH':'Relative humidity [%]',
+				'u':'Wind speed zonal compoent [ms-1]',
+				'v':'Wind speed meridional compoent [ms-1]',
+				'P':'Pressure [hPa]',
+				'TE':'Air temperature [degC]',
+				'TD':'Dew point temperature [degC]',
+				'bvf_dry':'Dry Brunt-Vaisala freq. [s-2]'	,
+				'bvf_moist':'Moist Brunt-Vaisala freq. [s-2]'	,
+				'MR':'Mixing ratio [g kg-1]'	}
+		l1 = l1 + '\n BBY balloon soundings - '+vartitle[soundvar]+' (contours)'
+	else:
+		l1 = 'BBY wind profiler - '+title
 
-	# format_yaxis(ax,height_array)
-	wphgt = np.arange(0.1, 3.9,0.1)
-	hgt=np.concatenate(([-0.1, 0.], wphgt),axis=0)
-	ax.set_yticks(hgt)
-	ax.set_ylim([0.,3.8])
+	if windstaff:
+		''' add wind staffs '''
+		palette = sns.color_palette()
+		color=palette[2]
+		add_windstaff(spd_array,dir_array,time_array,height_array,ax=ax, color=color)
 
 	plt.gca().invert_xaxis()
 	plt.ylabel('Range hight [km]')
 	plt.xlabel(r'$\Leftarrow$'+' Time [UTC]')
-	l1 = 'BBY wind profiler - '+title
-	l2 = '\nStart: '+time_array[0].strftime('%Y-%m-%d %H:%M UTC')
-	l3 = '\nEnd: '+time_array[-2].strftime('%Y-%m-%d %H:%M UTC')
-	plt.suptitle(l1+l2+l3)
+	
+	ls = '\nStart: '+time_array[0].strftime('%Y-%m-%d %H:%M UTC')
+	le = '\nEnd: '+time_array[-2].strftime('%Y-%m-%d %H:%M UTC')
+	plt.suptitle(l1+ls+le)
 	plt.draw()
 
 	return ax
@@ -139,6 +169,7 @@ def add_sounding_array(array,hgt,time,**kwargs):
 
 	ax = kwargs['ax']
 	wptime = kwargs['wptime']
+	var = kwargs['var']
 
 	ini = wptime[0].strftime('%Y-%m-%d %H:%M')
 	foo = wptime[-1] + timedelta(hours=1)
@@ -152,77 +183,22 @@ def add_sounding_array(array,hgt,time,**kwargs):
 
 	''' contour plot '''
 	rows,cols = array.shape
-	X,Y = np.meshgrid(idx,hgt/1000.)
-	cs=ax.contour(X,Y,array,colors='k',linewidths=0.8)
-	ax.clabel(cs, fmt='%1.0f', fontsize=12)	
+	X,Y = np.meshgrid(idx,(hgt)/1000.)
+	if var == 'theta':
+		levels=range(282,298)
+	elif var == 'thetaeq':
+		levels=range(298,308)
+	elif var in ['bvf_moist','bvf_dry']:
+		levels=np.arange(-2,2.5,0.5)
+
+	try:
+		cs=ax.contour(X,Y,array,levels=levels,colors='k',linewidths=0.8)		
+		ax.clabel(cs, levels[0::2], fmt='%1.0f', fontsize=12)	
+	except UnboundLocalError:
+		cs=ax.contour(X,Y,array,colors='k',linewidths=0.8)
+		ax.clabel(cs, fmt='%1.0f', fontsize=12)	
+	
 	plt.draw()
-
-def make_arrays(**kwargs):
-
-	file_sound = kwargs['files']
-	resolution = kwargs['resolution']
-	surf = kwargs['surface']
-
-	if surf:
-		''' make surface arrays '''
-		case = kwargs['case']
-		surface = get_surface_data(case)
-		hour=pd.TimeGrouper('H')
-		surf_wspd = surface.wspd.groupby(hour).mean()	
-		surf_wdir = surface.wdir.groupby(hour).mean()	
-
-	wp=[] 
-	ncols=0 # number of timestamps
-	for f in file_sound:
-		if resolution=='fine':
-			wp.append(mf.parse_windprof(f,'fine'))
-		elif resolution=='coarse':
-			wp.append(mf.parse_windprof(f,'coarse'))
-		else:
-			print 'Error: resolution has to be "fine" or "coarse"'
-		ncols+=1
-
-	''' creates 2D arrays with spd and dir '''
-	nrows = len(wp[0].HT.values) # number of altitude gates (fine=coarse)
-	hgt = wp[0].HT.values
-	wspd = np.empty([nrows,ncols])
-	wdir = np.empty([nrows,ncols])
-	timestamp = []
-	for i,p in enumerate(wp):
-		timestamp.append(p.timestamp)	
-		''' fine resolution '''
-		spd=p.SPD.values
-		wspd[:,i]=spd
-		dirr=p.DIR.values
-		wdir[:,i]=dirr
-
-	''' add 2 bottom rows for adding surface obs '''
-	bottom_rows=2
-	na = np.zeros((bottom_rows,ncols))
-	na[:] = np.nan
-	wspd = np.flipud(np.vstack((np.flipud(wspd),na)))
-	wdir = np.flipud(np.vstack((np.flipud(wdir),na)))
-	if surf:
-		wspd[0,:]=surf_wspd
-		wdir[0,:]=surf_wdir
-	hgt = np.hstack(([0.,0.05],hgt))
-
-	''' add last column for 00 UTC of last date '''
-	add_left=1
-	nrows, _ = wspd.shape
-	na = np.zeros((nrows,add_left))
-	na[:] = np.nan
-	wspd =np.hstack((wspd,na))
-	wdir =np.hstack((wdir,na))
-	timestamp.append(timestamp[-1]+timedelta(hours=1))
-
-	''' repeat along the x axis so we can
-	match the sounding array with 20
-	minute resolution '''
-	wspd = np.repeat(wspd,3,axis=1)
-	wdir = np.repeat(wdir,3,axis=1)
-
-	return wspd,wdir,timestamp,hgt
 
 def add_windstaff(wspd,wdir,time,hgt,**kwargs):
 
@@ -243,10 +219,7 @@ def add_windstaff(wspd,wdir,time,hgt,**kwargs):
 
 	nrows,ncols = U.shape
 	x=np.array(range(ncols))+0.5 # wind staff in the middle of pixel
-	y=np.array(range(nrows))+0.5 # wind staff in the middle of pixel
-	# X=np.tile(x,(y.size,1)) # repeats x y.size times to make 2D array
-	# Y=np.tile(y,(x.size,1)).T #repeates y x.size times to make 2D array
-	X,Y = np.meshgrid(x,hgt+0.05)
+	X,Y = np.meshgrid(x,hgt)
 	Uzero = U-U
 	Vzero = V-V
 
@@ -254,6 +227,74 @@ def add_windstaff(wspd,wdir,time,hgt,**kwargs):
 	ax.barbs(X,Y,U,V,color=color, sizes={'height':0},length=5,linewidth=0.5,barb_increments={'half':1})
 	ax.barbs(X,Y,Uzero,Vzero,color=color, sizes={'emptybarb':0.05},fill_empty=True)
 
+def make_arrays(**kwargs):
+
+	file_sound = kwargs['files']
+	resolution = kwargs['resolution']
+	surf = kwargs['surface']
+
+	if surf:
+		''' make surface arrays '''
+		surface = get_surface_data()
+		hour=pd.TimeGrouper('H')
+		surf_wspd = surface.wspd.groupby(hour).mean()	
+		surf_wdir = surface.wdir.groupby(hour).mean()	
+
+	wp=[] 
+	ncols=0 # number of timestamps
+	for f in file_sound:
+		if resolution=='fine':
+			wp.append(mf.parse_windprof(f,'fine'))
+		elif resolution=='coarse':
+			wp.append(mf.parse_windprof(f,'coarse'))
+		else:
+			print 'Error: resolution has to be "fine" or "coarse"'
+		ncols+=1
+
+	''' creates 2D arrays with spd and dir '''
+	nrows = len(wp[0].HT.values) # number of altitude gates (fine=coarse)
+	''' gate altitude needed for overlying sounding contours;
+	values have offset of 0.1 km but this is later corrected
+	when ploting the time-height section'''
+	wphgt = np.arange(0.2, 4.0,0.1)
+	wspd = np.empty([nrows,ncols])
+	wdir = np.empty([nrows,ncols])
+	timestamp = []
+	for i,p in enumerate(wp):
+		timestamp.append(p.timestamp)	
+		''' fine resolution '''
+		spd=p.SPD.values
+		wspd[:,i]=spd
+		dirr=p.DIR.values
+		wdir[:,i]=dirr
+
+	''' add 2 bottom rows for adding surface obs '''
+	bottom_rows=2
+	na = np.zeros((bottom_rows,ncols))
+	na[:] = np.nan
+	wspd = np.flipud(np.vstack((np.flipud(wspd),na)))
+	wdir = np.flipud(np.vstack((np.flipud(wdir),na)))
+	if surf:
+		wspd[0,:]=surf_wspd
+		wdir[0,:]=surf_wdir
+	hgt = np.hstack(([0.,0.1],wphgt))
+
+	''' add last column for 00 UTC of last date '''
+	add_left=1
+	nrows, _ = wspd.shape
+	na = np.zeros((nrows,add_left))
+	na[:] = np.nan
+	wspd =np.hstack((wspd,na))
+	wdir =np.hstack((wdir,na))
+	timestamp.append(timestamp[-1]+timedelta(hours=1))
+
+	''' repeat along the x axis so we can
+	match the sounding array with 20
+	minute resolution '''
+	wspd = np.repeat(wspd,3,axis=1)
+	wdir = np.repeat(wdir,3,axis=1)
+
+	return wspd,wdir,timestamp,hgt
 
 def get_wind_components(wspd,wdir):
 
@@ -261,7 +302,7 @@ def get_wind_components(wspd,wdir):
 	V=-wspd*np.cos(wdir*np.pi/180.)
 	return U,V
 
-def get_filenames(usr_case):
+def get_filenames():
 
 	case='case'+usr_case.zfill(2)
 	casedir=base_directory+'/'+case
@@ -273,7 +314,7 @@ def get_filenames(usr_case):
 			file_sound.append(casedir+'/'+f)
 	return file_sound
 
-def get_surface_data(usr_case):
+def get_surface_data():
 
 	''' set directory and input files '''
 	base_directory='/home/rvalenzuela/SURFACE'
@@ -310,31 +351,28 @@ def get_surface_data(usr_case):
 
 def format_xaxis(ax,time):
 
+	xtlabs = ax.get_xticklabels()
 	date_fmt='%H\n%d'
-	new_xticks=range(len(time))
-	xtlabel=[]
+	newxtlabs=[]
 	for t in time:
 		if np.mod(t.hour,3) == 0:
-			xtlabel.append(t.strftime(date_fmt))
-		else:
-			xtlabel.append('')
-	ax.set_xticks(new_xticks)
-	ax.set_xticklabels(xtlabel)
+			newxtlabs.append(t.strftime(date_fmt))
+	ax.set_xticklabels(newxtlabs)
+
 
 def format_yaxis(ax,hgt):
 
-	new_yticks=np.asarray(range(hgt.size))
-	new_labels=[]
-	for t in new_yticks:
-		if np.mod(t,5)==0:
-			new_labels.append(np.around(hgt[t],decimals=2))
-		else:
-			new_labels.append(' ')
-
-
-	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
-	ax.set_yticks(new_yticks+0.5)  # tick in the middle of the pixel
-	ax.set_yticklabels(new_labels)
+	''' adjust altitude labels such that
+	values represent gate altitutudes from 
+	first gate, add an empty label, and a 
+	surface observation level'''
+	ax.set_yticks(hgt)
+	hgt=hgt-0.1 # correct range altitude [km]
+	ytlabs=np.arange(hgt[-1],hgt[2],-0.1)
+	ytlabs=[str(s) for s in ytlabs]
+	ytlabs.extend(['','0.0'])
+	ytlabs.reverse()
+	ax.set_yticklabels(ytlabs)
 
 
 ''' start '''
