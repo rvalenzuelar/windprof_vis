@@ -47,18 +47,11 @@ def main():
 		print 'Error: indicate correct resolution (f or c)'
 	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution=res,surface=True)
 
-
-	''' make time-height section of total wind speed '''
-	ax=plot_time_height(wspd, wdir, time, hgt, vrange=[0,20],cname='YlGnBu_r',
-											title='Total wind speed',
-											with_sounding='bvf_dry',
-											with_windstaff=False)
-
 	''' make time-height section of total wind speed '''
 	ax=plot_time_height(wspd, wdir, time, hgt, vrange=[0,20],cname='YlGnBu_r',
 											title='Total wind speed',
 											with_sounding='bvf_moist',
-											with_windstaff=False)
+											with_windstaff=True)
 
 	# ''' get wind components '''
 	# U,V=get_wind_components(wspd,wdir)
