@@ -34,7 +34,7 @@ def main():
 
 	''' get wind profiler file names '''
 	wpfiles = get_filenames(usr_case)
-
+	print wpfiles
 	''' make profile arrays '''
 	if wprof_resmod == 'f':
 		res='fine' # 60 [m]
@@ -93,10 +93,17 @@ def get_surface_data(usr_case):
 		if f[:3]=='bby':
 			file_met.append(casedir+'/'+f)
 	name_field=['press','temp','rh','wspd','wdir','precip','mixr']
-	if usr_case =='3':
+	# if usr_case =='3':
+	# 	index_field=[3,6,9,10,12,17,26]
+	# elif usr_case == '13':
+	# 	index_field=[3,4,5,6,8,13,15]
+	if usr_case in ['1','2']:
+		index_field=[3,4,10,5,6,11,13]
+	elif usr_case in ['3','4','5','6','7']: 
 		index_field=[3,6,9,10,12,17,26]
-	elif usr_case == '13':
+	else:
 		index_field=[3,4,5,6,8,13,15]
+
 	locname='Bodega Bay'
 	locelevation = 15 # [m]
 
