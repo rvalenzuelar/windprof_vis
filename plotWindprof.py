@@ -22,8 +22,11 @@ from datetime import timedelta
 from matplotlib import colors
 
 ''' set directory and input files '''
-base_directory='/home/rvalenzuela/WINDPROF'
-# base_directory='/Users/raulv/Desktop/WINDPROF'
+
+# local_directory='/home/rvalenzuela/'
+local_directory='/Users/raulv/Documents/'
+
+base_directory=local_directory + 'WINDPROF'
 
 def main():
 
@@ -34,7 +37,7 @@ def main():
 
 	''' get wind profiler file names '''
 	wpfiles = get_filenames(usr_case)
-	print wpfiles
+	# print wpfiles
 	''' make profile arrays '''
 	if wprof_resmod == 'f':
 		res='fine' # 60 [m]
@@ -60,8 +63,8 @@ def main():
 	ax=plot_time_height(u, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Zonal component')
 	add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
 
-	# plt.show(block=False)
-	plt.show()
+	plt.show(block=False)
+	# plt.show()
 
 
 def get_filenames(usr_case):
@@ -79,7 +82,7 @@ def get_filenames(usr_case):
 def get_surface_data(usr_case):
 
 	''' set directory and input files '''
-	base_directory='/home/rvalenzuela/SURFACE'
+	base_directory=local_directory + 'SURFACE'
 	case='case'+usr_case.zfill(2)
 	casedir=base_directory+'/'+case
 	out=os.listdir(casedir)
@@ -175,14 +178,6 @@ def make_arrays(**kwargs):
 	resolution = kwargs['resolution']
 	surf = kwargs['surface']
 
-	if surf:
-		''' make surface arrays '''
-		case = kwargs['case']
-		surface = get_surface_data(case)
-		hour=pd.TimeGrouper('H')
-		surf_wspd = surface.wspd.groupby(hour).mean()	
-		surf_wdir = surface.wdir.groupby(hour).mean()	
-
 	wp=[] 
 	ncols=0 # number of timestamps
 	for f in file_sound:
@@ -195,7 +190,7 @@ def make_arrays(**kwargs):
 		ncols+=1
 
 	''' creates 2D arrays with spd and dir '''
-	nrows = len(wp[0].HT.values) # number of altitude gates (fine=coarse)
+	nrows = len(wp[0].HT.values) # number of altitude gates (fine same as coarse)
 	hgt = wp[0].HT.values
 	wspd = np.empty([nrows,ncols])
 	wdir = np.empty([nrows,ncols])
@@ -214,9 +209,20 @@ def make_arrays(**kwargs):
 	na[:] = np.nan
 	wspd = np.flipud(np.vstack((np.flipud(wspd),na)))
 	wdir = np.flipud(np.vstack((np.flipud(wdir),na)))
+	# print timestamp
 	if surf:
-		wspd[0,:]=surf_wspd
-		wdir[0,:]=surf_wdir
+		''' make surface arrays '''
+		case = kwargs['case']
+		surface = get_surface_data(case)
+		hour=pd.TimeGrouper('H')
+		surf_wspd = surface.wspd.groupby(hour).mean()	
+		surf_wdir = surface.wdir.groupby(hour).mean()
+		surf_st = np.where(np.asarray(timestamp) == surf_wspd.index[0])[0][0]
+		surf_en = np.where(np.asarray(timestamp) == surf_wspd.index[-1])[0][0]
+
+		wspd[0,surf_st:surf_en+1]=surf_wspd
+		wdir[0,surf_st:surf_en+1]=surf_wdir
+
 	hgt = np.hstack(([0.,0.05],hgt))
 
 	''' add last column for 00 UTC of last date '''
