@@ -23,8 +23,8 @@ from matplotlib import colors
 
 ''' set directory and input files '''
 
-# local_directory='/home/rvalenzuela/'
-local_directory='/Users/raulv/Documents/'
+local_directory='/home/rvalenzuela/'
+# local_directory='/Users/raulv/Documents/'
 
 base_directory=local_directory + 'WINDPROF'
 
@@ -54,6 +54,7 @@ def main():
 	palette = sns.color_palette()
 	color=palette[2]
 	u,v = add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
+	# add_soundingTH()
 
 	''' make time-height section of meridional wind speed '''
 	ax=plot_time_height(v, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Meridional component')
@@ -219,7 +220,6 @@ def make_arrays(**kwargs):
 		surf_wdir = surface.wdir.groupby(hour).mean()
 		surf_st = np.where(np.asarray(timestamp) == surf_wspd.index[0])[0][0]
 		surf_en = np.where(np.asarray(timestamp) == surf_wspd.index[-1])[0][0]
-
 		wspd[0,surf_st:surf_en+1]=surf_wspd
 		wdir[0,surf_st:surf_en+1]=surf_wdir
 
@@ -261,7 +261,7 @@ def add_windstaff(wspd,wdir,time,hgt,**kwargs):
 
 def format_xaxis(ax,time):
 
-	date_fmt='%H\n%d'
+	date_fmt='%d\n%H'
 	new_xticks=range(len(time))
 	xtlabel=[]
 	for t in time:
@@ -281,8 +281,6 @@ def format_yaxis(ax,hgt):
 			new_labels.append(np.around(hgt[t],decimals=2))
 		else:
 			new_labels.append(' ')
-
-
 	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
 	ax.set_yticks(new_yticks+0.5)  # tick in the middle of the pixel
 	ax.set_yticklabels(new_labels)
