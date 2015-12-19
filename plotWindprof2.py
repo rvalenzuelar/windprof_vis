@@ -18,11 +18,12 @@ import sys
 
 import Meteoframes as mf
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from matplotlib import colors
 import plotSoundTH as ps
 from scipy.ndimage.filters import gaussian_filter
-
+from scipy.interpolate import interp1d
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 ''' set directory and input files '''
 local_directory='/home/rvalenzuela/'
@@ -32,6 +33,42 @@ base_directory=local_directory + 'WINDPROF'
 
 def main():
 
+	for c in range(10,15):
+		wpfiles = get_filenames(str(c))
+		period = get_period(c)
+		wspd,wdir,time,hgt = make_arrays(files= wpfiles, 
+												resolution='coarse',
+												surface=True,
+												case=str(c),
+												period=period)
+		ax=plot_time_height(wspd, time, hgt, vrange=[0,35],cname='YlGnBu_r',title='Total wind speed')
+		palette = sns.color_palette()
+		color=palette[2]
+		add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
+		plt.show(block=False)
+
+
+def get_period(case):
+
+	reqdates={ '1': {'ini':[1998,1,18,15],'end':[1998,1,18,20]},
+			'2': {'ini':[1998,1,26,4],'end':[1998,1,26,9]},
+			'3': {'ini':[2001,1,23,21],'end':[2001,1,24,2]},
+			'4': {'ini':[2001,1,25,15],'end':[2001,1,25,20]},
+			'5': {'ini':[2001,2,9,10],'end':[2001,2,9,15]},
+			'6': {'ini':[2001,2,11,3],'end':[2001,2,11,8]},
+			'7': {'ini':[2001,2,17,17],'end':[2001,2,17,22]},
+			'8': {'ini':[2003,1,12,15],'end':[2003,1,12,20]},
+			'9': {'ini':[2003,1,22,18],'end':[2003,1,22,23]},
+			'10': {'ini':[2003,2,16,0],'end':[2003,2,16,5]},
+			'11': {'ini':[2004,1,9,17],'end':[2004,1,9,22]},
+			'12': {'ini':[2004,2,2,12],'end':[2004,2,2,17]},
+			'13': {'ini':[2004,2,17,14],'end':[2004,2,17,19]},
+			'14': {'ini':[2004,2,25,8],'end':[2004,2,25,13]}
+			}
+
+	return reqdates[str(case)]
+
+def plot_single():
 
 	print base_directory
 	usr_case = raw_input('\nIndicate case number (i.e. 1): ')
@@ -48,7 +85,7 @@ def main():
 	else:
 		print 'Error: indicate correct resolution (f or c)'
 	wspd,wdir,time,hgt = make_arrays(files= wpfiles, resolution=res,surface=True,case=usr_case)
-	
+
 	''' make time-height section of total wind speed '''
 	ax=plot_time_height(wspd, time, hgt, vrange=[0,20],cname='YlGnBu_r',title='Total wind speed')
 	l1 = 'BBY wind profiler - Total wind speed (color coded)'
@@ -59,15 +96,15 @@ def main():
 	u,v = add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
 
 	''' add balloon sounding time-height section '''
-	add_soundingTH('bvf_dry',usr_case,ax=ax,wptime=time,sigma=3)
-	# l2 = '\nBBY balloon soundings - Relative humidity (%, contours)'
-	# l2 = '\nBBY balloon soundings - Air pressure (hPa, contours)'
-	# l2 = '\nBBY balloon soundings - Mixing ratio '+r'($g kg^{-1}$, contours)'
-	# l2 = '\nBBY balloon soundings - Air temperature '+r'($^\circ$C, contours)'
-	# l2 = '\nBBY balloon soundings - Brunt-Vaisala freq moist '+r'(x$10^{-4} [s^{-2}]$, contours)'
-	l2 = '\nBBY balloon soundings - Brunt-Vaisala freq dry '+r'(x$10^{-4} [s^{-2}]$, contours)'
-	l3 = '\nDate: '+ time[0].strftime('%Y-%m')
-	plt.suptitle(l1+l2+l3)
+	# add_soundingTH('bvf_dry',usr_case,ax=ax,wptime=time,sigma=3)
+	# # l2 = '\nBBY balloon soundings - Relative humidity (%, contours)'
+	# # l2 = '\nBBY balloon soundings - Air pressure (hPa, contours)'
+	# # l2 = '\nBBY balloon soundings - Mixing ratio '+r'($g kg^{-1}$, contours)'
+	# # l2 = '\nBBY balloon soundings - Air temperature '+r'($^\circ$C, contours)'
+	# # l2 = '\nBBY balloon soundings - Brunt-Vaisala freq moist '+r'(x$10^{-4} [s^{-2}]$, contours)'
+	# l2 = '\nBBY balloon soundings - Brunt-Vaisala freq dry '+r'(x$10^{-4} [s^{-2}]$, contours)'
+	# l3 = '\nDate: '+ time[0].strftime('%Y-%m')
+	# plt.suptitle(l1+l2+l3)
 
 	# ''' make time-height section of meridional wind speed '''
 	# ax=plot_time_height(v, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Meridional component')
@@ -160,19 +197,19 @@ def plot_time_height(spd_array,time_array,height_array,**kwargs):
 	norm = colors.BoundaryNorm(bounds, cmap.N)
 
 	nrows,ncols = spd_array.shape
-	print (ncols,nrows)
 	img = plt.imshow(spd_array, interpolation='nearest', origin='lower',
 						cmap=cmap, norm=norm,vmin=vmin,vmax=vmax,
 						extent=[0,ncols,0,nrows],aspect='auto') #extent helps to make correct timestamp
 	
-	cb = plt.colorbar(img, cmap=cmap, norm=norm, 
-				boundaries=bounds, ticks=bounds, label='m s-1',fraction=0.046,pad=0.04)
+	divider = make_axes_locatable(ax)
+	cax = divider.append_axes("right", size="2%", pad=0.09)
+	cbar = plt.colorbar(img, cax=cax)
 
 	format_xaxis(ax,time_array)
 	format_yaxis(ax,height_array)
-	plt.gca().invert_xaxis()
-	plt.ylabel('Range hight [km]')
-	plt.xlabel(r'$\Leftarrow$'+' Time [UTC]')
+	ax.invert_xaxis()
+	ax.set_ylabel('Range hight [km]')
+	ax.set_xlabel(r'$\Leftarrow$'+' Time [UTC]')
 
 	plt.draw()
 
@@ -238,6 +275,14 @@ def make_arrays(**kwargs):
 	wdir =np.hstack((wdir,na))
 	timestamp.append(timestamp[-1]+timedelta(hours=1))
 
+	if 'period' in kwargs:
+		period=kwargs['period']
+		time=np.asarray(timestamp)
+		ini = datetime(*(period['ini'] + [0,0]))
+		end = datetime(*(period['end'] + [0,0]))
+		idx = np.where((time>= ini) & (time <= end) )[0]
+		return wspd[:,idx], wdir[:,idx], time[idx],hgt
+	
 	return wspd,wdir,timestamp,hgt
 
 def add_windstaff(wspd,wdir,time,hgt,**kwargs):
@@ -323,8 +368,9 @@ def add_soundingTH(soundvar,usr_case,**kwargs):
 
 def format_xaxis(ax,time):
 
+	' time is start hour'
 	date_fmt='%d\n%H'
-	new_xticks=range(len(time))
+	new_xticks=np.asarray(range(len(time)))
 	xtlabel=[]
 	for t in time:
 		if np.mod(t.hour,3) == 0:
@@ -334,19 +380,20 @@ def format_xaxis(ax,time):
 	ax.set_xticks(new_xticks)
 	ax.set_xticklabels(xtlabel)
 
-def format_yaxis(ax,hgt):
-
-	new_yticks=np.asarray(range(hgt.size))
-	new_labels=[]
-	for t in new_yticks:
-		if np.mod(t,5)==0:
-			new_labels.append(np.around(hgt[t],decimals=2))
-		else:
-			new_labels.append(' ')
-	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
-	ax.set_yticks(new_yticks+0.5)  # tick in the middle of the pixel
-	ax.set_yticklabels(new_labels)
-
+def format_yaxis(ax,hgt,**kwargs):
+	
+	hgt_res = np.unique(np.diff(hgt))[0]
+	if 'toplimit' in kwargs:
+		toplimit=kwargs['toplimit']
+		''' extentd hgt to toplimit km so all 
+		time-height sections have a common yaxis'''
+		hgt=np.arange(hgt[0],toplimit, hgt_res)
+	f = interp1d(hgt,range(len(hgt)))
+	ys=np.arange(np.ceil(hgt[0]), np.floor(hgt[-1])+1, 0.5)
+	new_yticks = f(ys)
+	ytlabel = ['{:2.1f}'.format(y) for y in ys]
+	ax.set_yticks(new_yticks+0.5)
+	ax.set_yticklabels(ytlabel)	
 
 ''' start '''
 if __name__ == "__main__":
