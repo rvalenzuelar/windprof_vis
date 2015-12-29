@@ -31,21 +31,25 @@ local_directory='/home/rvalenzuela/'
 
 base_directory=local_directory + 'WINDPROF'
 
-def main():
+def main(plot=False):
 
-	for c in range(10,15):
-		wpfiles = get_filenames(str(c))
-		period = get_period(c)
-		wspd,wdir,time,hgt = make_arrays(files= wpfiles, 
-												resolution='coarse',
-												surface=True,
-												case=str(c),
-												period=period)
-		ax=plot_time_height(wspd, time, hgt, vrange=[0,35],cname='YlGnBu_r',title='Total wind speed')
-		palette = sns.color_palette()
-		color=palette[2]
-		add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
-		plt.show(block=False)
+	if plot:
+		
+		# for c in range(1,3):
+		for c in [9]:
+			wpfiles = get_filenames(str(c))
+			period = get_period(c)
+			# period = False
+			wspd,wdir,time,hgt = make_arrays(files= wpfiles, 
+													resolution='coarse',
+													surface=True,
+													case=str(c),
+													period=period)
+			ax=plot_time_height(wspd, time, hgt, vrange=[0,35],cname='YlGnBu_r',title='Total wind speed')
+			palette = sns.color_palette()
+			color=palette[2]
+			add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
+			plt.show(block=False)
 
 
 def get_period(case):
@@ -215,7 +219,7 @@ def plot_time_height(spd_array,time_array,height_array,**kwargs):
 
 	return ax
 
-def make_arrays(**kwargs):
+def make_arrays(period=False,**kwargs):
 
 	file_sound = kwargs['files']
 	resolution = kwargs['resolution']
@@ -275,8 +279,7 @@ def make_arrays(**kwargs):
 	wdir =np.hstack((wdir,na))
 	timestamp.append(timestamp[-1]+timedelta(hours=1))
 
-	if 'period' in kwargs:
-		period=kwargs['period']
+	if period:
 		time=np.asarray(timestamp)
 		ini = datetime(*(period['ini'] + [0,0]))
 		end = datetime(*(period['end'] + [0,0]))
