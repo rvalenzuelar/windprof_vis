@@ -31,21 +31,19 @@ local_directory='/home/rvalenzuela/'
 
 base_directory=local_directory + 'WINDPROF'
 
-def main(plot=False):
+def main(plot=True):
 
 	if plot:
 		
-		# for c in range(1,3):
-		for c in [9]:
-			wpfiles = get_filenames(str(c))
-			period = get_period(c)
-			# period = False
-			wspd,wdir,time,hgt = make_arrays(files= wpfiles, 
-													resolution='coarse',
+		for c in range(13,15):
+		# for c in [6]:
+			# period = get_period(c)
+			period = False
+			wspd,wdir,time,hgt = make_arrays(	resolution='coarse',
 													surface=True,
 													case=str(c),
 													period=period)
-			ax=plot_time_height(wspd, time, hgt, vrange=[0,35],cname='YlGnBu_r',title='Total wind speed')
+			ax=plot_time_height(wspd, time, hgt, vrange=[0,30],cname='YlGnBu_r',title='Total wind speed')
 			palette = sns.color_palette()
 			color=palette[2]
 			add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
@@ -214,20 +212,24 @@ def plot_time_height(spd_array,time_array,height_array,**kwargs):
 	ax.invert_xaxis()
 	ax.set_ylabel('Range hight [km]')
 	ax.set_xlabel(r'$\Leftarrow$'+' Time [UTC]')
-
+	plt.suptitle('Date: '+time_array[0].strftime('%Y-%b'))
+	plt.subplots_adjust(left=0.05,right=0.95)
 	plt.draw()
 
 	return ax
 
-def make_arrays(period=False,**kwargs):
+def make_arrays(resolution='coarse', surface=False, case=None, period=False):
 
-	file_sound = kwargs['files']
-	resolution = kwargs['resolution']
-	surf = kwargs['surface']
+	# file_sound = kwargs['files']
+	# resolution = kwargs['resolution']
+	# surf = kwargs['surface']
+	# case = kwargs['case']
+
+	wpfiles = get_filenames(case)
 
 	wp=[] 
 	ncols=0 # number of timestamps
-	for f in file_sound:
+	for f in wpfiles:
 		if resolution=='fine':
 			wp.append(mf.parse_windprof(f,'fine'))
 		elif resolution=='coarse':
@@ -256,9 +258,8 @@ def make_arrays(period=False,**kwargs):
 	na[:] = np.nan
 	wspd = np.flipud(np.vstack((np.flipud(wspd),na)))
 	wdir = np.flipud(np.vstack((np.flipud(wdir),na)))
-	if surf:
+	if surface:
 		''' make surface arrays '''
-		case = kwargs['case']
 		surface = get_surface_data(case)
 		hour=pd.TimeGrouper('H')
 		surf_wspd = surface.wspd.groupby(hour).mean()	
