@@ -149,6 +149,43 @@ def plot_time_height(ax=None, wspd=None, time=None,height=None,**kwargs):
 
 	return ax
 	
+def plot_scatter(ax=None, wspd=None, wdir=None):
+
+	wd_array=wdir
+
+	x = wd_array[0,:]
+	y1 = wd_array[2,:] #120 m AGL
+	y2 = wd_array[6,:] #500 m AGL
+	y3 = wd_array[11,:] #1000 m AGL
+	y4 = wd_array[22,:] #2000 m AGL
+
+	s=100
+	hue=1.0
+	# colors=sns.cubehelix_palette(len(x),reverse=False, start=0.,hue=hue,rot=-0.4)
+	colors=sns.light_palette('navy', len(x),reverse=True)
+	ax.scatter(x,y1,color='b',label='120m',s=s,c=colors,edgecolors='none',alpha=0.6)
+	# colors=sns.cubehelix_palette(len(x),reverse=False, start=0.6,hue=hue)
+	colors=sns.light_palette('green', len(x),reverse=True)
+	ax.scatter(x,y2,color='g',label='500m',s=s,c=colors,edgecolors='none',alpha=0.6)
+	# colors=sns.cubehelix_palette(len(x),reverse=False, start=1.2,hue=hue)
+	colors=sns.light_palette('red', len(x),reverse=True)	
+	ax.scatter(x,y3,color='r',label='1000m',s=s,c=colors,edgecolors='none',alpha=0.6)
+	# colors=sns.cubehelix_palette(len(x),reverse=False, start=2.4,hue=hue)
+	colors=sns.light_palette('purple', len(x),reverse=True)	
+	ax.scatter(x,y4,color='y',label='2000m',s=s,c=colors,edgecolors='none',alpha=0.6)
+	
+	ax.set_xticks(range(0,360,30))
+	ax.set_yticks(range(0,360,30))
+	ax.set_xlim([0,360])
+	ax.set_ylim([0,360])
+	ax.set_xlabel('surface wind')
+	ax.set_ylabel('wind aloft')
+	ax.axvline(180,linewidth=2,color='k')
+	ax.axhline(180,linewidth=2,color='k')
+	plt.legend()
+	plt.draw()
+
+
 def get_filenames(usr_case):
 
 	case='case'+usr_case.zfill(2)
