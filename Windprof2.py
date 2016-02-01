@@ -15,7 +15,7 @@ import matplotlib.ticker as mtick
 import numpy as np
 import os 
 import sys
-
+from custom_div_cmap import cmap as custom_cmap
 import Meteoframes as mf
 
 from datetime import datetime, timedelta
@@ -31,44 +31,27 @@ local_directory='/home/rvalenzuela/'
 
 base_directory=local_directory + 'WINDPROF'
 
-def main(plot=True):
+def plot_vertical_shear(ax=None,wind=None,time=None,height=None):
 
-	if plot:
-		
-		for c in range(13,15):
-		# for c in [6]:
-			# period = get_period(c)
-			period = False
-			wspd,wdir,time,hgt = make_arrays(	resolution='coarse',
-													surface=True,
-													case=str(c),
-													period=period)
-			ax=plot_time_height(wspd, time, hgt, vrange=[0,30],cname='YlGnBu_r',title='Total wind speed')
-			palette = sns.color_palette()
-			color=palette[2]
-			add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
-			plt.show(block=False)
+	diff = np.diff(wind,axis=0)
+	nrows,ncols = diff.shape
+	cmap=custom_cmap(17)
+	norm = colors.BoundaryNorm(np.arange(-20,20), cmap.N)
 
+	img = ax.imshow(diff, interpolation='nearest', origin='lower',
+						# cmap=cmap, 
+						cmap='RdBu', 
+						vmin=-20,vmax=20,
+						# norm=norm,
+						extent=[0,ncols,0,nrows],
+						aspect='auto') 
 
-def get_period(case):
+	add_colorbar(img,ax)
+	format_xaxis(ax,time)
+	format_yaxis(ax,height)
+	ax.invert_xaxis()
+	plt.draw()
 
-	reqdates={ '1': {'ini':[1998,1,18,15],'end':[1998,1,18,20]},
-			'2': {'ini':[1998,1,26,4],'end':[1998,1,26,9]},
-			'3': {'ini':[2001,1,23,21],'end':[2001,1,24,2]},
-			'4': {'ini':[2001,1,25,15],'end':[2001,1,25,20]},
-			'5': {'ini':[2001,2,9,10],'end':[2001,2,9,15]},
-			'6': {'ini':[2001,2,11,3],'end':[2001,2,11,8]},
-			'7': {'ini':[2001,2,17,17],'end':[2001,2,17,22]},
-			'8': {'ini':[2003,1,12,15],'end':[2003,1,12,20]},
-			'9': {'ini':[2003,1,22,18],'end':[2003,1,22,23]},
-			'10': {'ini':[2003,2,16,0],'end':[2003,2,16,5]},
-			'11': {'ini':[2004,1,9,17],'end':[2004,1,9,22]},
-			'12': {'ini':[2004,2,2,12],'end':[2004,2,2,17]},
-			'13': {'ini':[2004,2,17,14],'end':[2004,2,17,19]},
-			'14': {'ini':[2004,2,25,8],'end':[2004,2,25,13]}
-			}
-
-	return reqdates[str(case)]
 
 def plot_single():
 
@@ -119,7 +102,53 @@ def plot_single():
 	plt.show(block=False)
 	# plt.show()
 
+def plot_time_height(ax=None, wspd=None, time=None,height=None,**kwargs):
 
+
+	''' NOAA wind profiler files after year 2000 indicate 
+	the start time of averaging period; so a timestamp of
+	13 UTC indicates average between 13 and 14 UTC '''
+
+	spd_array=wspd
+	time_array=time
+	height_array=height
+	vrange=kwargs['vrange']
+	cname=kwargs['cname']
+	title=kwargs['title']
+
+	''' make a color map of fixed colors '''
+	snsmap=sns.color_palette(cname, 24)
+	cmap = colors.ListedColormap(snsmap[2:])
+	if len(vrange) == 2:
+		vdelta=1
+		bounds=range(vrange[0],vrange[1]+vdelta, vdelta)
+		vmin=vrange[0]
+		vmax=vrange[1]
+	else:
+		bounds=vrange
+		vmin=vrange[0]
+		vmax=vrange[-1]
+	norm = colors.BoundaryNorm(bounds, cmap.N)
+
+	nrows,ncols = spd_array.shape
+	# print [nrows,ncols]
+
+	img = ax.imshow(spd_array, interpolation='nearest', origin='lower',
+						cmap=cmap, norm=norm,vmin=vmin,vmax=vmax,
+						extent=[0,ncols,0,nrows],aspect='auto') #extent helps to make correct timestamp
+	
+	add_colorbar(img,ax)
+	format_xaxis(ax,time_array)
+	format_yaxis(ax,height_array)
+	ax.invert_xaxis()
+	ax.set_ylabel('Range hight [km]')
+	ax.set_xlabel(r'$\Leftarrow$'+' Time [UTC]')
+	ax.set_title('Date: '+time_array[0].strftime('%Y-%b')+'\n')
+	plt.subplots_adjust(left=0.08,right=0.95)
+	plt.draw()
+
+	return ax
+	
 def get_filenames(usr_case):
 
 	case='case'+usr_case.zfill(2)
@@ -170,53 +199,27 @@ def get_surface_data(usr_case):
 
 	return surface
 
-def plot_time_height(spd_array,time_array,height_array,**kwargs):
+def get_period(case):
 
-	''' NOAA wind profiler files after year 2000 indicate 
-	the start time of averaging period; so a timestamp of
-	13 UTC indicates average between 13 and 14 UTC '''
+	reqdates={ '1': {'ini':[1998,1,18,15],'end':[1998,1,18,20]},
+			'2': {'ini':[1998,1,26,4],'end':[1998,1,26,9]},
+			'3': {'ini':[2001,1,23,21],'end':[2001,1,24,2]},
+			'4': {'ini':[2001,1,25,15],'end':[2001,1,25,20]},
+			'5': {'ini':[2001,2,9,10],'end':[2001,2,9,15]},
+			'6': {'ini':[2001,2,11,3],'end':[2001,2,11,8]},
+			'7': {'ini':[2001,2,17,17],'end':[2001,2,17,22]},
+			'8': {'ini':[2003,1,12,15],'end':[2003,1,12,20]},
+			'9': {'ini':[2003,1,22,18],'end':[2003,1,22,23]},
+			'10': {'ini':[2003,2,16,0],'end':[2003,2,16,5]},
+			'11': {'ini':[2004,1,9,17],'end':[2004,1,9,22]},
+			'12': {'ini':[2004,2,2,12],'end':[2004,2,2,17]},
+			'13': {'ini':[2004,2,17,14],'end':[2004,2,17,19]},
+			'14': {'ini':[2004,2,25,8],'end':[2004,2,25,13]}
+			}
 
-	vrange=kwargs['vrange']
-	cname=kwargs['cname']
-	title=kwargs['title']
+	return reqdates[str(case)]
 
-	''' creates plot with seaborn style '''
-	with sns.axes_style("ticks"):
-		f, ax = plt.subplots(figsize=(11,8.5))
 
-	''' make a color map of fixed colors '''
-	snsmap=sns.color_palette(cname, 24)
-	cmap = colors.ListedColormap(snsmap[2:])
-	if len(vrange) == 2:
-		vdelta=2
-		bounds=range(vrange[0],vrange[1]+vdelta, vdelta)
-		vmin=vrange[0]
-		vmax=vrange[1]
-	else:
-		bounds=vrange
-		vmin=vrange[0]
-		vmax=vrange[-1]
-	norm = colors.BoundaryNorm(bounds, cmap.N)
-
-	nrows,ncols = spd_array.shape
-	img = plt.imshow(spd_array, interpolation='nearest', origin='lower',
-						cmap=cmap, norm=norm,vmin=vmin,vmax=vmax,
-						extent=[0,ncols,0,nrows],aspect='auto') #extent helps to make correct timestamp
-	
-	divider = make_axes_locatable(ax)
-	cax = divider.append_axes("right", size="2%", pad=0.09)
-	cbar = plt.colorbar(img, cax=cax)
-
-	format_xaxis(ax,time_array)
-	format_yaxis(ax,height_array)
-	ax.invert_xaxis()
-	ax.set_ylabel('Range hight [km]')
-	ax.set_xlabel(r'$\Leftarrow$'+' Time [UTC]')
-	plt.suptitle('Date: '+time_array[0].strftime('%Y-%b'))
-	plt.subplots_adjust(left=0.05,right=0.95)
-	plt.draw()
-
-	return ax
 
 def make_arrays(resolution='coarse', surface=False, case=None, period=False):
 
@@ -320,11 +323,16 @@ def add_soundingTH(soundvar,usr_case,**kwargs):
 		sigma=None
 	ax = kwargs['ax']
 	wptime = kwargs['wptime']
+	wphgt = kwargs['wphgt']
 
 	''' call 2D array made from soundings '''
 	sarray,shgt, stimestamp,_ = ps.get_interp_array(soundvar,case=usr_case)
 	if sigma:
 		sarray = gaussian_filter(sarray, sigma,mode='nearest')		
+	
+	' find sounding index corresponding to top of wp '
+	f =interp1d(shgt/1000.,range(len(shgt)))
+	soundtop_idx=int(f(wphgt[-1]))
 
 	if soundvar in ['TE','TD']:
 		sarray=sarray-273.15
@@ -338,7 +346,7 @@ def add_soundingTH(soundvar,usr_case,**kwargs):
 	end = foo.strftime('%Y-%m-%d %H:%M')
 	wp_timestamp=np.arange(ini, end, dtype='datetime64[20m]')
 
-	''' allocate the array in the corresponding 	time '''
+	''' allocate the array in the corresponding time '''
 	booleans = np.in1d(wp_timestamp,stimestamp)
 	idx = np.nonzero(booleans)
 
@@ -351,7 +359,7 @@ def add_soundingTH(soundvar,usr_case,**kwargs):
 	''' create TH sounding meshgrid using axes values of
 	imshow-extent (cols,rows of windprof image); '''
 	x=idx 
-	vertical_gates = shgt.shape[0]
+	vertical_gates = shgt[:soundtop_idx].shape[0]
 	''' y values are correct for wp coarse resolution; check
 	modifications when plotting wp fine resolution '''
 	y=np.linspace(0,40,vertical_gates)
@@ -361,11 +369,13 @@ def add_soundingTH(soundvar,usr_case,**kwargs):
 	elif soundvar == 'thetaeq':
 		levels=range(298,308)
 	elif soundvar in ['bvf_moist','bvf_dry']:
-		levels=np.arange(-2,2.5,0.5)
-
+		levels=np.arange(-2.5, 3.5, 1.0)
+	print levels
 	try:
-		cs=ax.contour(X,Y,sarray,levels=levels,colors='k',linewidths=0.8)		
-		ax.clabel(cs, levels[0::2], fmt='%1.0f', fontsize=12)	
+		cs=ax.contour(X,Y,sarray[:soundtop_idx,:],levels=levels,colors='k',linewidths=0.8)		
+		# ax.clabel(cs, levels, fmt='%1.1f', fontsize=12)
+		ax.contourf(X,Y,sarray[:soundtop_idx,:],levels=levels,colors='none',
+									hatches=['*', '.',None,'/','//' ],zorder=10000)			
 	except UnboundLocalError:
 		cs=ax.contour(X,Y,sarray,colors='k',linewidths=0.8)
 		ax.clabel(cs, fmt='%1.0f', fontsize=12)	
@@ -393,15 +403,16 @@ def format_yaxis(ax,hgt,**kwargs):
 		time-height sections have a common yaxis'''
 		hgt=np.arange(hgt[0],toplimit, hgt_res)
 	f = interp1d(hgt,range(len(hgt)))
-	ys=np.arange(np.ceil(hgt[0]), np.floor(hgt[-1])+1, 0.5)
+	ys=np.arange(np.ceil(hgt[0]), hgt[-1], 0.2)
 	new_yticks = f(ys)
 	ytlabel = ['{:2.1f}'.format(y) for y in ys]
 	ax.set_yticks(new_yticks+0.5)
 	ax.set_yticklabels(ytlabel)	
 
-''' start '''
-if __name__ == "__main__":
-	main()
+def add_colorbar(img,ax):
+	divider = make_axes_locatable(ax)
+	cax = divider.append_axes("right", size="2%", pad=0.09)
+	cbar = plt.colorbar(img, cax=cax)	
 
 
 
