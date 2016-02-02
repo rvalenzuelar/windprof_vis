@@ -15,19 +15,20 @@ import matplotlib.ticker as mtick
 import numpy as np
 import os 
 import sys
-from custom_div_cmap import cmap as custom_cmap
 import Meteoframes as mf
+import plotSoundTH as ps
 
 from datetime import datetime, timedelta
 from matplotlib import colors
-import plotSoundTH as ps
 from scipy.ndimage.filters import gaussian_filter
 from scipy.interpolate import interp1d
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+# from custom_div_cmap import cmap as custom_cmap
+
 
 ''' set directory and input files '''
-local_directory='/home/rvalenzuela/'
-# local_directory='/Users/raulv/Documents/'
+# local_directory='/home/rvalenzuela/'
+local_directory='/Users/raulv/Documents/'
 
 base_directory=local_directory + 'WINDPROF'
 
@@ -148,42 +149,154 @@ def plot_time_height(ax=None, wspd=None, time=None,height=None,**kwargs):
 	plt.draw()
 
 	return ax
+
+def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,height=None,**kwargs):
+
+
+	''' NOAA wind profiler files after year 2000 indicate 
+	the start time of averaging period; so a timestamp of
+	13 UTC indicates average between 13 and 14 UTC '''
+
+	spd_array=wspd
+	time_array=time
+	height_array=height
+	vrange=kwargs['vrange']
+	cname=kwargs['cname']
+	title=kwargs['title']
+
+	''' make a color map of fixed colors '''
+	snsmap=sns.color_palette(cname, 24)
+	cmap = colors.ListedColormap(snsmap[2:])
+	if len(vrange) == 2:
+		vdelta=1
+		bounds=range(vrange[0],vrange[1]+vdelta, vdelta)
+		vmin=vrange[0]
+		vmax=vrange[1]
+	else:
+		bounds=vrange
+		vmin=vrange[0]
+		vmax=vrange[-1]
+	norm = colors.BoundaryNorm(bounds, cmap.N)
+
+	nrows,ncols = spd_array.shape
+	# print [nrows,ncols]
+
+	# img = ax.imshow(spd_array, interpolation='nearest', origin='lower',
+	# 					cmap=cmap, norm=norm,vmin=vmin,vmax=vmax,
+	# 					extent=[0,ncols,0,nrows],aspect='auto') #extent helps to make correct timestamp
 	
-def plot_scatter(ax=None, wspd=None, wdir=None):
+	''' derive U and V components '''
+	U=-wspd*np.sin(wdir*np.pi/180.)
+	V=-wspd*np.cos(wdir*np.pi/180.)
+	x=np.array(range(len(time)))+0.5 # wind staff in the middle of pixel
+	y=np.array(range(height_array.size))+0.5 # wind staff in the middle of pixel
+	X=np.tile(x,(y.size,1)) # repeats x y.size times to make 2D array
+	Y=np.tile(y,(x.size,1)).T #repeates y x.size times to make 2D array
+	Uzero = U-U
+	Vzero = V-V
+
+	ax.barbs(X,Y,U,V,np.sqrt(U*U+V*V), sizes={'height':0},
+			length=5,linewidth=0.5,barb_increments={'half':1},
+			cmap='jet')
+	ax.barbs(X,Y,Uzero,Vzero,np.sqrt(U*U+V*V), sizes={'emptybarb':0.05},fill_empty=True,
+			cmap='jet')
+
+
+	format_xaxis(ax,time_array)
+	format_yaxis(ax,height_array)
+	ax.set_xlim([-0.5,len(time_array)+0.5])
+	ax.invert_xaxis()
+	ax.set_ylim(-0.5,ax.get_ylim()[1])
+	print ax.get_xlim()
+	ax.set_ylabel('Range hight [km]')
+	ax.set_xlabel(r'$\Leftarrow$'+' Time [UTC]')
+	ax.set_title('Date: '+time_array[0].strftime('%Y-%b')+'\n')
+	plt.subplots_adjust(left=0.08,right=0.95)
+	plt.draw()
+
+	return ax	
+
+def add_windstaff(wspd,wdir,time,hgt,**kwargs):
+
+	if kwargs and kwargs['color']:
+		color=kwargs['color']
+	else:
+		color='k'
+	ax = kwargs['ax'] 
+
+	''' derive U and V components '''
+	U=-wspd*np.sin(wdir*np.pi/180.)
+	V=-wspd*np.cos(wdir*np.pi/180.)
+	x=np.array(range(len(time)))+0.5 # wind staff in the middle of pixel
+	y=np.array(range(hgt.size))+0.5 # wind staff in the middle of pixel
+	X=np.tile(x,(y.size,1)) # repeats x y.size times to make 2D array
+	Y=np.tile(y,(x.size,1)).T #repeates y x.size times to make 2D array
+	Uzero = U-U
+	Vzero = V-V
+
+	ax.barbs(X,Y,U,V,color=color, sizes={'height':0},length=5,linewidth=0.5,barb_increments={'half':1})
+	ax.barbs(X,Y,Uzero,Vzero,color=color, sizes={'emptybarb':0.05},fill_empty=True)
+
+	return U,V	
+	
+def plot_scatter(ax=None,wspd=None,wdir=None,hgt=None,title=None):
+
+
+	if ax is None:
+		fig,ax=plt.subplots(2,2,sharex=True,sharey=True,figsize=(11,8.5))
+		axes=[ax[0,0],ax[0,1],ax[1,0],ax[1,1]]
+
+	f=interp1d(hgt,range(len(hgt)))
+	HIDX=f([0.12, 0.5, 1.0, 2.0])
+	HIDX= np.round(HIDX,0).astype(int)
 
 	wd_array=wdir
-
 	x = wd_array[0,:]
-	y1 = wd_array[2,:] #120 m AGL
-	y2 = wd_array[6,:] #500 m AGL
-	y3 = wd_array[11,:] #1000 m AGL
-	y4 = wd_array[22,:] #2000 m AGL
+	TIDX = ~np.isnan(x)
+	x=x[TIDX]
+	y1 = wd_array[HIDX[0],TIDX] #120 m AGL
+	y2 = wd_array[HIDX[1],TIDX] #500 m AGL
+	y3 = wd_array[HIDX[2],TIDX] #1000 m AGL
+	y4 = wd_array[HIDX[3],TIDX] #2000 m AGL
+	ys=[y1,y2,y3,y4]
+
 
 	s=100
 	hue=1.0
-	# colors=sns.cubehelix_palette(len(x),reverse=False, start=0.,hue=hue,rot=-0.4)
-	colors=sns.light_palette('navy', len(x),reverse=True)
-	ax.scatter(x,y1,color='b',label='120m',s=s,c=colors,edgecolors='none',alpha=0.6)
-	# colors=sns.cubehelix_palette(len(x),reverse=False, start=0.6,hue=hue)
-	colors=sns.light_palette('green', len(x),reverse=True)
-	ax.scatter(x,y2,color='g',label='500m',s=s,c=colors,edgecolors='none',alpha=0.6)
-	# colors=sns.cubehelix_palette(len(x),reverse=False, start=1.2,hue=hue)
-	colors=sns.light_palette('red', len(x),reverse=True)	
-	ax.scatter(x,y3,color='r',label='1000m',s=s,c=colors,edgecolors='none',alpha=0.6)
-	# colors=sns.cubehelix_palette(len(x),reverse=False, start=2.4,hue=hue)
-	colors=sns.light_palette('purple', len(x),reverse=True)	
-	ax.scatter(x,y4,color='y',label='2000m',s=s,c=colors,edgecolors='none',alpha=0.6)
-	
-	ax.set_xticks(range(0,360,30))
-	ax.set_yticks(range(0,360,30))
-	ax.set_xlim([0,360])
-	ax.set_ylim([0,360])
-	ax.set_xlabel('surface wind')
-	ax.set_ylabel('wind aloft')
-	ax.axvline(180,linewidth=2,color='k')
-	ax.axhline(180,linewidth=2,color='k')
-	plt.legend()
+	alpha=0.5
+	colors=['navy','green','red','purple']
+	labels=['120m AGL', '500m AGL', '1000m AGL', '2000m AGL']
+
+	for ax,co,y,lab,n in zip(axes,colors,ys,labels,range(4)):
+
+		ax.scatter(x,y,s=s,color=co,edgecolors='none',alpha=alpha)
+		
+		ax.text(0,1.0,lab,transform=ax.transAxes)
+
+		ax.set_xticks(range(0,360,30))
+		ax.set_yticks(range(0,360,30))
+		ax.set_xlim([0,360])
+		ax.set_ylim([0,360])
+		if n in [0,2]:
+			ax.set_ylabel('wind aloft')
+		if n in [2,3]:
+			ax.set_xlabel('surface wind')
+		ax.axvline(180,linewidth=2,color='k')
+		ax.axhline(180,linewidth=2,color='k')
+		ax.invert_xaxis()
+	plt.suptitle(title)
+	plt.subplots_adjust(hspace=0.05,wspace=0.05)
 	plt.draw()
+
+def get_scatter_colors():
+
+	colors=sns.light_palette('navy', len(x),reverse=True)
+
+	colors=sns.light_palette('green', len(x),reverse=True)
+
+	colors=sns.light_palette('red', len(x),reverse=True)	
+
+	colors=sns.light_palette('purple', len(x),reverse=True)	
 
 
 def get_filenames(usr_case):
@@ -329,28 +442,7 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False):
 	
 	return wspd,wdir,timestamp,hgt
 
-def add_windstaff(wspd,wdir,time,hgt,**kwargs):
 
-	if kwargs and kwargs['color']:
-		color=kwargs['color']
-	else:
-		color='k'
-	ax = kwargs['ax'] 
-
-	''' derive U and V components '''
-	U=-wspd*np.sin(wdir*np.pi/180.)
-	V=-wspd*np.cos(wdir*np.pi/180.)
-	x=np.array(range(len(time)))+0.5 # wind staff in the middle of pixel
-	y=np.array(range(hgt.size))+0.5 # wind staff in the middle of pixel
-	X=np.tile(x,(y.size,1)) # repeats x y.size times to make 2D array
-	Y=np.tile(y,(x.size,1)).T #repeates y x.size times to make 2D array
-	Uzero = U-U
-	Vzero = V-V
-
-	ax.barbs(X,Y,U,V,color=color, sizes={'height':0},length=5,linewidth=0.5,barb_increments={'half':1})
-	ax.barbs(X,Y,Uzero,Vzero,color=color, sizes={'emptybarb':0.05},fill_empty=True)
-
-	return U,V
 
 def add_soundingTH(soundvar,usr_case,**kwargs):
 

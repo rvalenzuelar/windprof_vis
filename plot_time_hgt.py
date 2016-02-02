@@ -2,8 +2,9 @@ import Windprof2 as wp
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+reload(wp)
 
-case=[8]
+case=[9]
 
 ''' creates plot with seaborn style '''
 with sns.axes_style("white"):
@@ -13,13 +14,13 @@ with sns.axes_style("white"):
 for c in case:
 	# period = get_period(c)
 	period = False
-	wspd,wdir,time,hgt = wp.make_arrays(	resolution='coarse',
+	wspd,wdir,time,hgt = wp.make_arrays(	resolution='fine',
 											surface=True,
 											case=str(c),
 											period=period)
-	wp.plot_time_height(ax=ax1, wspd=wspd, time=time, 
-						height=hgt, vrange=[0,25],
-						cname='YlGnBu_r',title='Total wind speed')
+	# wp.plot_time_height(ax=ax1, wspd=wspd, time=time, 
+	# 					height=hgt, vrange=[0,25],
+	# 					cname='YlGnBu_r',title='Total wind speed')
 	# wp.add_windstaff(wspd,wdir,time,hgt,ax=ax1, color=(1,0.2,0))
 	# wp.add_soundingTH('bvf_moist',str(c),ax=ax1,wptime=time,wphgt=hgt,sigma=1)
 
@@ -27,5 +28,9 @@ for c in case:
 	# plot_vertical_shear(ax=ax2, wind=wdir, time=time, height=hgt)
 
 
-	# plt.show(block=False)
-	plt.show()
+	wp.plot_colored_staff(ax=ax1, wspd=wspd, wdir=wdir, time=time, 
+						height=hgt, vrange=[0,25],
+						cname='YlGnBu_r',title='Total wind speed')
+
+	plt.show(block=False)
+	# plt.show()
