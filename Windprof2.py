@@ -23,8 +23,8 @@ from matplotlib import colors
 from scipy.ndimage.filters import gaussian_filter
 from scipy.interpolate import interp1d
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-# from custom_div_cmap import cmap as custom_cmap
 
+reload(mf)
 
 ''' set directory and input files '''
 # local_directory='/home/rvalenzuela/'
@@ -150,7 +150,9 @@ def plot_time_height(ax=None, wspd=None, time=None,height=None,**kwargs):
 
 	return ax
 
-def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,height=None,**kwargs):
+def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None, 
+						height=None, cmap=None, vrange=None, vdelta=None, 
+						vdensity=1.0, hdensity=1.0, title=None):
 
 
 	''' NOAA wind profiler files after year 2000 indicate 
@@ -160,15 +162,11 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,height=None,**kw
 	spd_array=wspd
 	time_array=time
 	height_array=height
-	vrange=kwargs['vrange']
-	cname=kwargs['cname']
-	title=kwargs['title']
 
 	''' make a color map of fixed colors '''
-	snsmap=sns.color_palette(cname, 24)
+	snsmap=sns.color_palette(cmap, 24)
 	cmap = colors.ListedColormap(snsmap[2:])
 	if len(vrange) == 2:
-		vdelta=1
 		bounds=range(vrange[0],vrange[1]+vdelta, vdelta)
 		vmin=vrange[0]
 		vmax=vrange[1]
@@ -197,20 +195,21 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,height=None,**kw
 
 	ax.barbs(X,Y,U,V,np.sqrt(U*U+V*V), sizes={'height':0},
 			length=5,linewidth=0.5,barb_increments={'half':1},
-			cmap='jet')
-	ax.barbs(X,Y,Uzero,Vzero,np.sqrt(U*U+V*V), sizes={'emptybarb':0.05},fill_empty=True,
-			cmap='jet')
+			cmap=cmap,norm=norm)
+	barb=ax.barbs(X,Y,Uzero,Vzero,np.sqrt(U*U+V*V), sizes={'emptybarb':0.05},fill_empty=True,
+			cmap=cmap,norm=norm)
 
+	add_colorbar(barb,ax)
 
 	format_xaxis(ax,time_array)
 	format_yaxis(ax,height_array)
 	ax.set_xlim([-0.5,len(time_array)+0.5])
 	ax.invert_xaxis()
 	ax.set_ylim(-0.5,ax.get_ylim()[1])
-	print ax.get_xlim()
 	ax.set_ylabel('Range hight [km]')
 	ax.set_xlabel(r'$\Leftarrow$'+' Time [UTC]')
-	ax.set_title('Date: '+time_array[0].strftime('%Y-%b')+'\n')
+	datetxt = ' - Date: '+time_array[0].strftime('%Y-%b')
+	ax.text(0.,1.01,title+datetxt,transform=ax.transAxes)
 	plt.subplots_adjust(left=0.08,right=0.95)
 	plt.draw()
 
@@ -287,6 +286,38 @@ def plot_scatter(ax=None,wspd=None,wdir=None,hgt=None,title=None):
 	plt.suptitle(title)
 	plt.subplots_adjust(hspace=0.05,wspace=0.05)
 	plt.draw()
+
+def plot_scatter2(ax=None,wspd=None,wdir=None,hgt=None,mAGL=None,
+					vline=None, hline=None, color=None):
+
+
+	f=interp1d(hgt,range(len(hgt)))
+	HIDX=f(mAGL/1000.)
+	HIDX= np.round(HIDX,0).astype(int)
+
+	wd_array=wdir
+	x = wd_array[0,:]
+	TIDX = ~np.isnan(x)
+	x=x[TIDX]
+	y = wd_array[HIDX,TIDX]
+
+	s=100
+	hue=1.0
+	alpha=0.5
+	colors=['navy','green','red','purple']
+
+	ax.scatter(x,y,s=s,color=color,edgecolors='none',alpha=alpha)
+	
+	ax.set_xticks(range(0,360,180))
+	ax.set_yticks(range(0,360,180))
+	ax.set_xticklabels('')
+	ax.set_yticklabels('')
+	ax.set_xlim([0,360])
+	ax.set_ylim([0,360])
+	ax.axvline(vline,linewidth=2,color=(0.5,0.5,0.5))
+	ax.axhline(hline,linewidth=2,color=(0.5,0.5,0.5))
+	ax.invert_xaxis()
+	plt.draw()	
 
 def get_scatter_colors():
 
