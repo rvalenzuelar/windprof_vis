@@ -27,8 +27,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 reload(mf)
 
 ''' set directory and input files '''
-# local_directory='/home/rvalenzuela/'
-local_directory='/Users/raulv/Documents/'
+local_directory='/home/rvalenzuela/'
+# local_directory='/Users/raulv/Documents/'
 
 base_directory=local_directory + 'WINDPROF'
 
@@ -151,7 +151,7 @@ def plot_time_height(ax=None, wspd=None, time=None,height=None,**kwargs):
 	return ax
 
 def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None, 
-						height=None, cmap=None, vrange=None, vdelta=None, 
+						height=None, cmap=None, spd_range=None, spd_delta=None, 
 						vdensity=1.0, hdensity=1.0, title=None):
 
 
@@ -166,14 +166,14 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
 	''' make a color map of fixed colors '''
 	snsmap=sns.color_palette(cmap, 24)
 	cmap = colors.ListedColormap(snsmap[2:])
-	if len(vrange) == 2:
-		bounds=range(vrange[0],vrange[1]+vdelta, vdelta)
-		vmin=vrange[0]
-		vmax=vrange[1]
+	if len(spd_range) == 2:
+		bounds=range(spd_range[0],spd_range[1]+spd_delta, spd_delta)
+		vmin=spd_range[0]
+		vmax=spd_range[1]
 	else:
-		bounds=vrange
-		vmin=vrange[0]
-		vmax=vrange[-1]
+		bounds=spd_range
+		vmin=spd_range[0]
+		vmax=spd_range[-1]
 	norm = colors.BoundaryNorm(bounds, cmap.N)
 
 	nrows,ncols = spd_array.shape
@@ -208,7 +208,7 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
 	ax.set_ylim(-0.5,ax.get_ylim()[1])
 	ax.set_ylabel('Range hight [km]')
 	ax.set_xlabel(r'$\Leftarrow$'+' Time [UTC]')
-	datetxt = ' - Date: '+time_array[0].strftime('%Y-%b')
+	datetxt = ' - Date: '+time_array[1].strftime('%Y-%b')
 	ax.text(0.,1.01,title+datetxt,transform=ax.transAxes)
 	plt.subplots_adjust(left=0.08,right=0.95)
 	plt.draw()
@@ -287,19 +287,19 @@ def plot_scatter(ax=None,wspd=None,wdir=None,hgt=None,title=None):
 	plt.subplots_adjust(hspace=0.05,wspace=0.05)
 	plt.draw()
 
-def plot_scatter2(ax=None,wspd=None,wdir=None,hgt=None,mAGL=None,
-					vline=None, hline=None, color=None):
+def plot_scatter2(ax=None,wspd=None,wdir=None,hgt=None, time=None,
+					mAGL=None,	lim_surf=None, lim_aloft=None, color=None):
 
+
+	x = wdir[0,:]
+	TIDX = ~np.isnan(x) #time index where surf obs is not nan
+	x=x[TIDX] # surf obs
 
 	f=interp1d(hgt,range(len(hgt)))
 	HIDX=f(mAGL/1000.)
 	HIDX= np.round(HIDX,0).astype(int)
+	y = wdir[HIDX,TIDX] # obs aloft
 
-	wd_array=wdir
-	x = wd_array[0,:]
-	TIDX = ~np.isnan(x)
-	x=x[TIDX]
-	y = wd_array[HIDX,TIDX]
 
 	s=100
 	hue=1.0
@@ -314,19 +314,60 @@ def plot_scatter2(ax=None,wspd=None,wdir=None,hgt=None,mAGL=None,
 	ax.set_yticklabels('')
 	ax.set_xlim([0,360])
 	ax.set_ylim([0,360])
-	ax.axvline(vline,linewidth=2,color=(0.5,0.5,0.5))
-	ax.axhline(hline,linewidth=2,color=(0.5,0.5,0.5))
+	ax.axvline(lim_surf,linewidth=2,color=(0.5,0.5,0.5))
+	ax.axhline(lim_aloft,linewidth=2,color=(0.5,0.5,0.5))
 	ax.invert_xaxis()
 	plt.draw()	
+
+	# time=np.asarray(time)
+	# timex=time[TIDX]
+	# for t,x, y in zip(timex, x, y):
+	# 	print [t,np.round(x,0), np.round(y,0)]
+
+	if time is not None:
+		TTA_IDX=np.where((x<=lim_surf) & (y<=lim_aloft))[0]
+		time=np.asarray(time)
+		time=time[TIDX]
+		# xtta=x[TTA_IDX]
+		# ytta=y[TTA_IDX]
+		timetta=time[TTA_IDX]
+		# for x,y,t in zip(xtta,ytta,timetta):
+		# 	print [t, np.round(x,1), np.round(y,1)]
+		return timetta
+
+def get_tta_times(resolution='coarse', surface=True, case=None,
+					lim_surf=125, lim_aloft=170, mAGL=120):
+	
+	''' 
+	Note:
+	I calibrated default values by comparing retrieved times with
+	windprof time-height section plots for all ground radar cases (RV)
+	'''
+
+	_,wdir,time,hgt = make_arrays(resolution=resolution, surface=surface, case=case)
+
+	x = wdir[0,:]
+	TIDX = ~np.isnan(x) #time index where surf obs is not nan
+	x=x[TIDX] # surf obs
+
+	f=interp1d(hgt,range(len(hgt)))
+	HIDX=f(mAGL/1000.)
+	HIDX= np.round(HIDX,0).astype(int)
+	y = wdir[HIDX,TIDX] # obs aloft	
+
+	TTA_IDX=np.where((x<=lim_surf) & (y<=lim_aloft))[0]
+	time=np.asarray(time)
+	time=time[TIDX]
+	timetta=time[TTA_IDX]
+
+	return timetta
+
 
 def get_scatter_colors():
 
 	colors=sns.light_palette('navy', len(x),reverse=True)
-
 	colors=sns.light_palette('green', len(x),reverse=True)
-
 	colors=sns.light_palette('red', len(x),reverse=True)	
-
 	colors=sns.light_palette('purple', len(x),reverse=True)	
 
 
