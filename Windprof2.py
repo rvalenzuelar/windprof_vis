@@ -27,10 +27,11 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 reload(mf)
 
 ''' set directory and input files '''
-local_directory='/home/rvalenzuela/'
+# local_directory='/home/rvalenzuela/'
 # local_directory='/Users/raulv/Documents/'
+local_directory=os.path.expanduser('~')
 
-base_directory=local_directory + 'WINDPROF'
+base_directory=local_directory + '/WINDPROF'
 
 def plot_vertical_shear(ax=None,wind=None,time=None,height=None):
 
@@ -386,7 +387,7 @@ def get_filenames(usr_case):
 def get_surface_data(usr_case):
 
 	''' set directory and input files '''
-	base_directory=local_directory + 'SURFACE'
+	base_directory=local_directory + '/SURFACE'
 	case='case'+usr_case.zfill(2)
 	casedir=base_directory+'/'+case
 	out=os.listdir(casedir)
