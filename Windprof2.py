@@ -337,14 +337,13 @@ def plot_scatter2(ax=None,wspd=None,wdir=None,hgt=None, time=None,
 		return timetta
 
 def get_tta_times(resolution='coarse', surface=True, case=None,
-					lim_surf=125, lim_aloft=170, mAGL=120):
-	
+					lim_surf=125, lim_aloft=170, mAGL=120,
+					continuous=True):
 	''' 
 	Note:
 	I calibrated default values by comparing retrieved times with
 	windprof time-height section plots for all ground radar cases (RV)
 	'''
-
 	_,wdir,time,hgt = make_arrays(resolution=resolution, surface=surface, case=case)
 
 	x = wdir[0,:]
@@ -361,7 +360,27 @@ def get_tta_times(resolution='coarse', surface=True, case=None,
 	time=time[TIDX]
 	timetta=time[TTA_IDX]
 
-	return timetta
+	if continuous:
+		''' fills with datetime when there is 1hr gap and remove
+		    portions that are either post frontal (case 9) 
+		    or shorter than 5hr (case13)'''
+		diff=np.diff(timetta)
+		onehrgaps=np.where(diff == timedelta(seconds=7200))
+		onehr=timedelta(hours=1)
+		timetta_cont = np.append(timetta, timetta[onehrgaps]+onehr)
+		timetta_cont = np.sort(timetta_cont)
+
+		diff=np.diff(timetta_cont)
+		jump_idx=np.where(diff>timedelta(seconds=3600))[0]
+		if jump_idx:
+			if len(timetta_cont)-jump_idx > jump_idx:
+				return timetta_cont[jump_idx+1:]
+			else:
+				return timetta_cont[:jump_idx+1]
+		else:
+			return timetta_cont
+	else:
+		return timetta
 
 
 def get_scatter_colors():
