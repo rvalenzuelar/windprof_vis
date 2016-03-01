@@ -345,14 +345,17 @@ def plot_scatter2(ax=None, wspd=None, wdir=None, hgt=None, time=None,
 
 def get_tta_times(resolution='coarse', surface=True, case=None,
                   lim_surf=125, lim_aloft=170, mAGL=120,
-                  continuous=True):
+                  continuous=True, homedir=None):
     '''
     Note:
     I calibrated default values by comparing retrieved times with
     windprof time-height section plots for all ground radar cases (RV)
     '''
+    print case
+    print homedir
     _, wdir, time, hgt = make_arrays(
-        resolution=resolution, surface=surface, case=case)
+        resolution=resolution, surface=surface, case=case,
+        homedir=homedir)
 
     x = wdir[0, :]
     TIDX = ~np.isnan(x)  # time index where surf obs is not nan
@@ -399,10 +402,10 @@ def get_scatter_colors():
     colors = sns.light_palette('purple', len(x), reverse=True)
 
 
-def get_filenames(usr_case):
+def get_filenames(usr_case, homedir=None):
 
     case = 'case' + usr_case.zfill(2)
-    casedir = base_directory + '/' + case
+    casedir = homedir + '/' + case
     out = os.listdir(casedir)
     out.sort()
     file_sound = []
@@ -471,7 +474,8 @@ def get_period(case):
     return reqdates[str(case)]
 
 
-def make_arrays(resolution='coarse', surface=False, case=None, period=False):
+def make_arrays(resolution='coarse', surface=False, case=None, period=False,
+                homedir=None):
 
     # file_sound = kwargs['files']
     # resolution = kwargs['resolution']
