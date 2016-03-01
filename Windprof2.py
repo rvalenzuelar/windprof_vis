@@ -351,8 +351,7 @@ def get_tta_times(resolution='coarse', surface=True, case=None,
     I calibrated default values by comparing retrieved times with
     windprof time-height section plots for all ground radar cases (RV)
     '''
-    print case
-    print homedir
+
     _, wdir, time, hgt = make_arrays(
         resolution=resolution, surface=surface, case=case,
         homedir=homedir)
@@ -415,11 +414,11 @@ def get_filenames(usr_case, homedir=None):
     return file_sound
 
 
-def get_surface_data(usr_case):
+def get_surface_data(usr_case, homedir=None):
     ''' set directory and input files '''
     base_directory = local_directory + '/SURFACE'
     case = 'case' + usr_case.zfill(2)
-    casedir = base_directory + '/' + case
+    casedir = homedir + '/' + case
     out = os.listdir(casedir)
     out.sort()
     files = []
@@ -481,8 +480,7 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False,
     # resolution = kwargs['resolution']
     # surf = kwargs['surface']
     # case = kwargs['case']
-
-    wpfiles = get_filenames(case)
+    wpfiles = get_filenames(case,homedir=homedir+'/WINDPROF')
 
     wp = []
     ncols = 0  # number of timestamps
@@ -518,7 +516,7 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False,
     wdir = np.flipud(np.vstack((np.flipud(wdir), na)))
     if surface:
         ''' make surface arrays '''
-        surface = get_surface_data(case)
+        surface = get_surface_data(case,homedir=homedir+'/SURFACE')
         hour = pd.TimeGrouper('H')
         surf_wspd = surface.wspd.groupby(hour).mean()
         surf_wdir = surface.wdir.groupby(hour).mean()
