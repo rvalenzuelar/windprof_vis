@@ -10,11 +10,11 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
+# import matplotlib.ticker as mtick
 
 import numpy as np
 import os
-import sys
+# import sys
 import Meteoframes as mf
 import plotSoundTH as ps
 
@@ -22,7 +22,8 @@ from datetime import datetime, timedelta
 from matplotlib import colors
 from scipy.ndimage.filters import gaussian_filter
 from scipy.interpolate import interp1d
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+# from mpl_toolkits.axes_grid1 import make_axes_locatable
+from rv_utilities import add_colorbar, format_xaxis
 
 reload(mf)
 
@@ -613,20 +614,6 @@ def add_soundingTH(soundvar, usr_case, **kwargs):
         ax.clabel(cs, fmt='%1.0f', fontsize=12)
 
 
-def format_xaxis(ax, time):
-    ' time is start hour'
-    date_fmt = '%d\n%H'
-    new_xticks = np.asarray(range(len(time)))
-    xtlabel = []
-    for t in time:
-        if np.mod(t.hour, 3) == 0:
-            xtlabel.append(t.strftime(date_fmt))
-        else:
-            xtlabel.append('')
-    ax.set_xticks(new_xticks)
-    ax.set_xticklabels(xtlabel)
-
-
 def format_yaxis(ax, hgt, **kwargs):
 
     hgt_res = np.unique(np.diff(hgt))[0]
@@ -641,9 +628,3 @@ def format_yaxis(ax, hgt, **kwargs):
     ytlabel = ['{:2.1f}'.format(y) for y in ys]
     ax.set_yticks(new_yticks + 0.5)
     ax.set_yticklabels(ytlabel)
-
-
-def add_colorbar(img, ax):
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="2%", pad=0.09)
-    cbar = plt.colorbar(img, cax=cax)
