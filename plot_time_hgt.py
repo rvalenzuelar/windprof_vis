@@ -1,16 +1,16 @@
 import Windprof2 as wp
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 from matplotlib.backends.backend_pdf import PdfPages
 
-reload(wp)
+homedir = os.path.expanduser('~')
 
-case = [8]
-# case=range(8,15)
+case = range(8, 9)
 res = 'coarse'
-
 o = 'case{}_total_wind_{}.pdf'
 t = 'Total wind speed - {} resolution - Case {}'
+
 for c in case:
 
     ''' creates plot with seaborn style '''
@@ -20,7 +20,8 @@ for c in case:
     wspd, wdir, time, hgt = wp.make_arrays(resolution=res,
                                            surface=True,
                                            case=str(c),
-                                           period=False)
+                                           period=False,
+                                           homedir=homedir)
 
     # wp.plot_time_height(ax=ax1, wspd=wspd, time=time,
     #                   height=hgt, vrange=[0,25],
@@ -32,7 +33,8 @@ for c in case:
                           height=hgt, spd_range=[0, 20], spd_delta=2,
                           vdensity=1, hdensity=1, cmap='nipy_spectral',
                           title=t.format(res.title(), str(c).zfill(2)))
-    wp.add_soundingTH('bvf_moist', str(c), ax=ax1,
+
+    wp.add_soundingTH('thetaeq', str(c), ax=ax1,
                       wptime=time, wphgt=hgt, sigma=1)
 
     # savename=o.format(str(c).zfill(2), res)

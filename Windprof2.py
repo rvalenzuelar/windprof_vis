@@ -10,11 +10,8 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-# import matplotlib.ticker as mtick
-
 import numpy as np
 import os
-# import sys
 import Meteoframes as mf
 import plotSoundTH as ps
 
@@ -22,10 +19,7 @@ from datetime import datetime, timedelta
 from matplotlib import colors
 from scipy.ndimage.filters import gaussian_filter
 from scipy.interpolate import interp1d
-# from mpl_toolkits.axes_grid1 import make_axes_locatable
 from rv_utilities import add_colorbar, format_xaxis
-
-reload(mf)
 
 ''' set directory and input files '''
 # local_directory='/home/rvalenzuela/'
@@ -202,10 +196,11 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
     ax.barbs(X, Y, U, V, np.sqrt(U * U + V * V), sizes={'height': 0},
              length=5, linewidth=0.5, barb_increments={'half': 1},
              cmap=cmap, norm=norm)
-    barb = ax.barbs(X, Y, Uzero, Vzero, np.sqrt(U * U + V * V), sizes={'emptybarb': 0.05}, fill_empty=True,
+    barb = ax.barbs(X, Y, Uzero, Vzero, np.sqrt(U * U + V * V),
+                    sizes={'emptybarb': 0.05}, fill_empty=True,
                     cmap=cmap, norm=norm)
 
-    add_colorbar(barb, ax)
+    add_colorbar(ax, barb)
 
     format_xaxis(ax, time_array)
     format_yaxis(ax, height_array)
@@ -481,7 +476,7 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False,
     # resolution = kwargs['resolution']
     # surf = kwargs['surface']
     # case = kwargs['case']
-    wpfiles = get_filenames(case,homedir=homedir+'/WINDPROF')
+    wpfiles = get_filenames(case, homedir=homedir+'/WINDPROF')
 
     wp = []
     ncols = 0  # number of timestamps
@@ -517,7 +512,7 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False,
     wdir = np.flipud(np.vstack((np.flipud(wdir), na)))
     if surface:
         ''' make surface arrays '''
-        surface = get_surface_data(case,homedir=homedir+'/SURFACE')
+        surface = get_surface_data(case, homedir=homedir+'/SURFACE')
         hour = pd.TimeGrouper('H')
         surf_wspd = surface.wspd.groupby(hour).mean()
         surf_wdir = surface.wdir.groupby(hour).mean()
@@ -599,7 +594,7 @@ def add_soundingTH(soundvar, usr_case, **kwargs):
     if soundvar == 'theta':
         levels = range(282, 298)
     elif soundvar == 'thetaeq':
-        levels = range(298, 308)
+        levels = range(280, 311)
     elif soundvar in ['bvf_moist', 'bvf_dry']:
         levels = np.arange(-2.5, 3.5, 1.0)
     print levels
@@ -607,7 +602,8 @@ def add_soundingTH(soundvar, usr_case, **kwargs):
         cs = ax.contour(X, Y, sarray[:soundtop_idx, :],
                         levels=levels, colors='k', linewidths=0.8)
         # ax.clabel(cs, levels, fmt='%1.1f', fontsize=12)
-        ax.contourf(X, Y, sarray[:soundtop_idx, :], levels=levels, colors='none',
+        ax.contourf(X, Y, sarray[:soundtop_idx, :],
+                    levels=levels, colors='none',
                     hatches=['*', '.', None, '/', '//'], zorder=10000)
     except UnboundLocalError:
         cs = ax.contour(X, Y, sarray, colors='k', linewidths=0.8)
