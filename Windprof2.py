@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import Meteoframes as mf
-import plotSoundTH as ps
+import sounding as ps
 
 from datetime import datetime, timedelta
 from matplotlib import colors
@@ -542,19 +542,15 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False,
     return wspd, wdir, timestamp, hgt
 
 
-def add_soundingTH(soundvar, usr_case, **kwargs):
-
-    try:
-        sigma = kwargs['sigma']
-    except:
-        sigma = None
-    ax = kwargs['ax']
-    wptime = kwargs['wptime']
-    wphgt = kwargs['wphgt']
+def add_soundingTH(soundvar, usr_case, homedir=None, ax=None,
+                   sigma=None, wptime=None, wphgt=None):
 
     ''' call 2D array made from soundings '''
-    sarray, shgt, stimestamp, _ = ps.get_interp_array(soundvar, case=usr_case)
-    if sigma:
+    out = ps.get_interp_array(soundvar, case=usr_case,
+                              homedir=homedir)
+    sarray, shgt, stimestamp, _ = out
+
+    if sigma is not None:
         sarray = gaussian_filter(sarray, sigma, mode='nearest')
 
     ' find sounding index corresponding to top of wp '
@@ -597,7 +593,7 @@ def add_soundingTH(soundvar, usr_case, **kwargs):
         levels = range(280, 311)
     elif soundvar in ['bvf_moist', 'bvf_dry']:
         levels = np.arange(-2.5, 3.5, 1.0)
-    print levels
+    # print levels
     try:
         cs = ax.contour(X, Y, sarray[:soundtop_idx, :],
                         levels=levels, colors='k', linewidths=0.8)
