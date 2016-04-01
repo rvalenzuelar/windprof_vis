@@ -5,8 +5,9 @@ import os
 from matplotlib.backends.backend_pdf import PdfPages
 
 homedir = os.path.expanduser('~')
+topdf = False
 
-case = range(8, 9)
+case = range(8, 15)
 res = 'coarse'
 o = 'case{}_total_wind_{}.pdf'
 t = 'Total wind speed - {} resolution - Case {}'
@@ -20,7 +21,6 @@ for c in case:
     wspd, wdir, time, hgt = wp.make_arrays(resolution=res,
                                            surface=True,
                                            case=str(c),
-                                           period=False,
                                            homedir=homedir)
 
     # wp.plot_time_height(ax=ax1, wspd=wspd, time=time,
@@ -34,13 +34,14 @@ for c in case:
                           vdensity=1, hdensity=1, cmap='nipy_spectral',
                           title=t.format(res.title(), str(c).zfill(2)))
 
-    wp.add_soundingTH('thetaeq', str(c), ax=ax1,
-                      wptime=time, wphgt=hgt, sigma=1)
+    wp.add_soundingTH('bvf_moist', str(c), ax=ax1, wptime=time,
+                      wphgt=hgt, sigma=1, homedir=homedir)
 
-    # savename=o.format(str(c).zfill(2), res)
-    # wp_pdf=PdfPages(savename)
-    # wp_pdf.savefig()
-    # wp_pdf.close()
+    if topdf:
+        savename = o.format(str(c).zfill(2), res)
+        wp_pdf = PdfPages(savename)
+        wp_pdf.savefig()
+        wp_pdf.close()
 
     plt.show(block=False)
     # plt.show()
