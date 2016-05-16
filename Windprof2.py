@@ -10,6 +10,7 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.axes as maxes
 import numpy as np
 import os
 import Meteoframes as mf
@@ -19,7 +20,7 @@ from datetime import datetime, timedelta
 from matplotlib import colors
 from scipy.ndimage.filters import gaussian_filter
 from scipy.interpolate import interp1d
-from rv_utilities import add_colorbar, format_xaxis
+from rv_utilities import add_colorbar, format_xaxis, fill2D_with_nans
 
 ''' set directory and input files '''
 # local_directory='/home/rvalenzuela/'
@@ -152,7 +153,8 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None, **kwargs):
 
 def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
                        height=None, cmap=None, spd_range=None, spd_delta=None,
-                       vdensity=1.0, hdensity=1.0, title=None):
+                       vdensity=None, hdensity=None, title=None,
+                       cbar=True):
     ''' NOAA wind profiler files after year 2000 indicate
     the start time of averaging period; so a timestamp of
     13 UTC indicates average between 13 and 14 UTC '''
@@ -175,12 +177,6 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
     nrows, ncols = spd_array.shape
-    # print [nrows,ncols]
-
-    # img = ax.imshow(spd_array, interpolation='nearest', origin='lower',
-    #                   cmap=cmap, norm=norm,vmin=vmin,vmax=vmax,
-    # extent=[0,ncols,0,nrows],aspect='auto') #extent helps to make correct
-    # timestamp
 
     ''' derive U and V components '''
     U = -wspd * np.sin(wdir * np.pi / 180.)
@@ -193,6 +189,16 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
     Uzero = U - U
     Vzero = V - V
 
+    ''' change arrays density '''
+    if vdensity == 0 or hdensity == 0:
+        pass
+    else:
+        U = fill2D_with_nans(inarray=U,start=[3,0],
+            size=[vdensity,hdensity])
+        V = fill2D_with_nans(inarray=V,start=[3,0],
+            size=[vdensity,hdensity])
+
+
     ax.barbs(X, Y, U, V, np.sqrt(U * U + V * V), sizes={'height': 0},
              length=5, linewidth=0.5, barb_increments={'half': 1},
              cmap=cmap, norm=norm)
@@ -200,21 +206,29 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
                     sizes={'emptybarb': 0.05}, fill_empty=True,
                     cmap=cmap, norm=norm)
 
-    add_colorbar(ax, barb)
-
-    format_xaxis(ax, time_array)
-    format_yaxis(ax, height_array)
+    if isinstance(cbar, maxes._subplots.Axes):
+        hcbar = add_colorbar(cbar, barb)
+    elif isinstance(cbar,bool) and cbar:
+        hcbar = add_colorbar(ax, barb)
+    else:
+        hcbar = None
+    
     ax.set_xlim([-0.5, len(time_array) + 0.5])
     ax.invert_xaxis()
-    ax.set_ylim(-0.5, ax.get_ylim()[1])
-    ax.set_ylabel('Range hight [km]')
+    
+    format_xaxis(ax, time_array, delta_hours=1)
     ax.set_xlabel(r'$\Leftarrow$' + ' Time [UTC]')
-    datetxt = ' - Date: ' + time_array[1].strftime('%Y-%b')
-    ax.text(0., 1.01, title + datetxt, transform=ax.transAxes)
+
+    format_yaxis2(ax, height_array)
+    ax.set_ylabel('Range hight [km]')
+    
+    if title is not None:
+        ax.text(0., 1.01, title, transform=ax.transAxes)
+    
     plt.subplots_adjust(left=0.08, right=0.95)
     plt.draw()
 
-    return ax
+    return [ax,hcbar]
 
 
 def add_windstaff(wspd, wdir, time, hgt, **kwargs):
@@ -388,28 +402,6 @@ def get_tta_times(resolution='coarse', surface=True, case=None,
     else:
         return timetta
 
-
-def get_scatter_colors():
-
-    colors = sns.light_palette('navy', len(x), reverse=True)
-    colors = sns.light_palette('green', len(x), reverse=True)
-    colors = sns.light_palette('red', len(x), reverse=True)
-    colors = sns.light_palette('purple', len(x), reverse=True)
-
-
-def get_filenames(usr_case, homedir=None):
-
-    case = 'case' + usr_case.zfill(2)
-    casedir = homedir + '/' + case
-    out = os.listdir(casedir)
-    out.sort()
-    file_sound = []
-    for f in out:
-        if f[-1:] == 'w':
-            file_sound.append(casedir + '/' + f)
-    return file_sound
-
-
 def get_surface_data(usr_case, homedir=None):
     ''' set directory and input files '''
     base_directory = local_directory + '/SURFACE'
@@ -448,34 +440,10 @@ def get_surface_data(usr_case, homedir=None):
     return surface
 
 
-def get_period(case):
-
-    reqdates = {'1': {'ini': [1998, 1, 18, 15], 'end': [1998, 1, 18, 20]},
-                '2': {'ini': [1998, 1, 26, 4], 'end': [1998, 1, 26, 9]},
-                '3': {'ini': [2001, 1, 23, 21], 'end': [2001, 1, 24, 2]},
-                '4': {'ini': [2001, 1, 25, 15], 'end': [2001, 1, 25, 20]},
-                '5': {'ini': [2001, 2, 9, 10], 'end': [2001, 2, 9, 15]},
-                '6': {'ini': [2001, 2, 11, 3], 'end': [2001, 2, 11, 8]},
-                '7': {'ini': [2001, 2, 17, 17], 'end': [2001, 2, 17, 22]},
-                '8': {'ini': [2003, 1, 12, 15], 'end': [2003, 1, 12, 20]},
-                '9': {'ini': [2003, 1, 22, 18], 'end': [2003, 1, 22, 23]},
-                '10': {'ini': [2003, 2, 16, 0], 'end': [2003, 2, 16, 5]},
-                '11': {'ini': [2004, 1, 9, 17], 'end': [2004, 1, 9, 22]},
-                '12': {'ini': [2004, 2, 2, 12], 'end': [2004, 2, 2, 17]},
-                '13': {'ini': [2004, 2, 17, 14], 'end': [2004, 2, 17, 19]},
-                '14': {'ini': [2004, 2, 25, 8], 'end': [2004, 2, 25, 13]}
-                }
-
-    return reqdates[str(case)]
-
-
-def make_arrays(resolution='coarse', surface=False, case=None, period=False,
+def make_arrays(resolution='coarse', surface=False,
+                case=None, period=False,
                 homedir=None):
 
-    # file_sound = kwargs['files']
-    # resolution = kwargs['resolution']
-    # surf = kwargs['surface']
-    # case = kwargs['case']
     wpfiles = get_filenames(case, homedir=homedir+'/WINDPROF')
 
     wp = []
@@ -493,6 +461,7 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False,
     nrows = len(
         wp[0].HT.values)  # number of altitude gates (fine same as coarse)
     hgt = wp[0].HT.values
+    print len(hgt)
     wspd = np.empty([nrows, ncols])
     wdir = np.empty([nrows, ncols])
     timestamp = []
@@ -504,6 +473,7 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False,
         dirr = p.DIR.values
         wdir[:, i] = dirr
 
+    print wspd.shape
     ''' add 2 bottom rows for adding surface obs '''
     bottom_rows = 2
     na = np.zeros((bottom_rows, ncols))
@@ -541,6 +511,94 @@ def make_arrays(resolution='coarse', surface=False, case=None, period=False,
 
     return wspd, wdir, timestamp, hgt
 
+
+def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
+                homedir=None):
+
+    ''' 
+    interpolates to grid with 40 gates,
+    first and last gate at 160 and 3750 m
+    (92 m resolution)
+    '''
+
+    wpfiles = get_filenames(case, homedir=homedir+'/WINDPROF')
+    wp = []
+    ncols = 0  # number of timestamps
+    for f in wpfiles:
+        # print f
+        if resolution == 'fine':
+            wp.append(mf.parse_windprof(f, 'fine'))
+        elif resolution == 'coarse':
+            wp.append(mf.parse_windprof(f, 'coarse'))
+        else:
+            print 'Error: resolution has to be "fine" or "coarse"'
+        ncols += 1
+
+    ''' creates 2D arrays with spd and dir '''
+    hgt = wp[0].HT.values
+    newh = np.linspace(0.160, 3.750, 40)
+    wspd = np.zeros(len(newh))
+    wdir = np.zeros(len(newh))
+    timestamp = []
+
+    first = True
+    for p in wp:
+        timestamp.append(p.timestamp)
+
+        ''' for each hourly profile '''
+        fs = interp1d(hgt, p.SPD.values)
+        fd = interp1d(hgt, p.DIR.values)
+        news = fs(newh)
+        newd = fd(newh)
+        if first:
+            wspd = news
+            wdir = newd
+            first = False
+        else:
+            wspd = np.vstack((wspd, news))
+            wdir = np.vstack((wdir, newd))
+
+    wspd = wspd.T
+    wdir = wdir.T
+
+    ''' add 2 bottom rows for adding surface obs '''
+    bottom_rows = 2
+    na = np.zeros((bottom_rows, ncols))
+    na[:] = np.nan
+    wspd = np.flipud(np.vstack((np.flipud(wspd), na)))
+    wdir = np.flipud(np.vstack((np.flipud(wdir), na)))
+    if surface:
+        ''' make surface arrays '''
+        surface = get_surface_data(case, homedir=homedir+'/SURFACE')
+        hour = pd.TimeGrouper('H')
+        surf_wspd = surface.wspd.groupby(hour).mean()
+        surf_wdir = surface.wdir.groupby(hour).mean()
+        surf_st = np.where(np.asarray(timestamp) == surf_wspd.index[0])[0][0]
+        surf_en = np.where(np.asarray(timestamp) == surf_wspd.index[-1])[0][0]
+        wspd[0, surf_st:surf_en + 1] = surf_wspd
+        wdir[0, surf_st:surf_en + 1] = surf_wdir
+
+    hgt = np.hstack(([0., 0.05], newh))
+
+    ''' add last column for 00 UTC of last date 
+    (caution with some storms ending at 22UTC)
+    '''
+    # add_left = 1
+    # nrows, _ = wspd.shape
+    # na = np.zeros((nrows, add_left))
+    # na[:] = np.nan
+    # wspd = np.hstack((wspd, na))
+    # wdir = np.hstack((wdir, na))
+    # timestamp.append(timestamp[-1] + timedelta(hours=1))
+
+    if period:
+        time = np.asarray(timestamp)
+        ini = datetime(*(period['ini'] + [0, 0]))
+        end = datetime(*(period['end'] + [0, 0]))
+        idx = np.where((time >= ini) & (time <= end))[0]
+        return wspd[:, idx], wdir[:, idx], time[idx], hgt
+
+    return wspd, wdir, timestamp, hgt
 
 def add_soundingTH(soundvar, usr_case, homedir=None, ax=None,
                    sigma=None, wptime=None, wphgt=None):
@@ -605,6 +663,53 @@ def add_soundingTH(soundvar, usr_case, homedir=None, ax=None,
         cs = ax.contour(X, Y, sarray, colors='k', linewidths=0.8)
         ax.clabel(cs, fmt='%1.0f', fontsize=12)
 
+def get_scatter_colors():
+
+    colors = sns.light_palette('navy', len(x), reverse=True)
+    colors = sns.light_palette('green', len(x), reverse=True)
+    colors = sns.light_palette('red', len(x), reverse=True)
+    colors = sns.light_palette('purple', len(x), reverse=True)
+
+
+def get_filenames(usr_case, homedir=None):
+
+    case = 'case' + usr_case.zfill(2)
+    casedir = homedir + '/' + case
+    out = os.listdir(casedir)
+    out.sort()
+    file_list = []
+    period = get_period(case=int(usr_case),outfmt='%y%j.%Hw')
+    for f in out:
+        if f[-9:] in period:
+            file_list.append(casedir + '/' + f)
+    return file_list
+
+def get_period(case=None, outfmt=None):
+
+    reqdates = {'1': {'ini': [1998, 1, 18, 15], 'end': [1998, 1, 18, 20]},
+                '2': {'ini': [1998, 1, 26, 4], 'end': [1998, 1, 26, 9]},
+                '3': {'ini': [2001, 1, 23, 21], 'end': [2001, 1, 24, 2]},
+                '4': {'ini': [2001, 1, 25, 15], 'end': [2001, 1, 25, 20]},
+                '5': {'ini': [2001, 2, 9, 10], 'end': [2001, 2, 9, 15]},
+                '6': {'ini': [2001, 2, 11, 3], 'end': [2001, 2, 11, 8]},
+                '7': {'ini': [2001, 2, 17, 17], 'end': [2001, 2, 17, 22]},
+                '8':  pd.date_range(start='2003-01-12 00:00',periods=72,freq='60T'),
+                '9':  pd.date_range(start='2003-01-21 00:00',periods=72,freq='60T'),
+                '10': pd.date_range(start='2003-02-14 00:00',periods=72,freq='60T'),
+                '11': pd.date_range(start='2004-01-08 00:00',periods=72,freq='60T'),
+                '12': pd.date_range(start='2004-02-01 00:00',periods=72,freq='60T'),
+                '13': pd.date_range(start='2004-02-16 00:00',periods=96,freq='60T'),
+                '14': pd.date_range(start='2004-02-24 00:00',periods=72,freq='60T')
+                }
+    if outfmt is None:
+        return reqdates[str(case)]
+    else:
+        outs = []
+        dr = reqdates[str(case)]
+        for d in dr:
+            outs.append(d.strftime(outfmt))
+
+        return outs
 
 def format_yaxis(ax, hgt, **kwargs):
 
@@ -620,3 +725,21 @@ def format_yaxis(ax, hgt, **kwargs):
     ytlabel = ['{:2.1f}'.format(y) for y in ys]
     ax.set_yticks(new_yticks + 0.5)
     ax.set_yticklabels(ytlabel)
+
+def format_yaxis2(ax, hgt):
+
+    lasthgt = hgt[-1]+(hgt[-1]-hgt[-2])
+    hgt = np.append(hgt,lasthgt)
+    lenhgt = len(hgt)
+    ax.set_ylim(-0.5, lenhgt)
+    f = interp1d(hgt, range(len(hgt)))
+    ys = np.arange(0, 4.0, 0.2)
+    new_yticks = f(ys)
+    ytlabel = ['{:2.1f}'.format(y) for y in ys]
+    ax.set_yticks(new_yticks+0.5)
+    ax.set_yticklabels(ytlabel)
+
+
+
+
+

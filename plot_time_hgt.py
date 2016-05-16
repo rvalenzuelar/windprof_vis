@@ -4,21 +4,23 @@ import seaborn as sns
 import os
 from matplotlib.backends.backend_pdf import PdfPages
 
-homedir = os.path.expanduser('~')
+# homedir = os.path.expanduser('~')
+homedir = '/Volumes/RauLdisk'
 topdf = False
 
 case = range(8, 15)
 res = 'coarse'
 o = 'case{}_total_wind_{}.pdf'
-t = 'Total wind speed - {} resolution - Case {}'
+t = 'Total wind speed - {} resolution - Case {} - Date: {}'
 
+datetxt = ' - Date: ' + time_array[1].strftime('%Y-%b')
 for c in case:
 
     ''' creates plot with seaborn style '''
     with sns.axes_style("white"):
         f, ax1 = plt.subplots(figsize=(11, 8.5))
 
-    wspd, wdir, time, hgt = wp.make_arrays(resolution=res,
+    wspd, wdir, time, hgt = wp.make_arrays2(resolution=res,
                                            surface=True,
                                            case=str(c),
                                            homedir=homedir)
@@ -32,10 +34,11 @@ for c in case:
     wp.plot_colored_staff(ax=ax1, wspd=wspd, wdir=wdir, time=time,
                           height=hgt, spd_range=[0, 20], spd_delta=2,
                           vdensity=1, hdensity=1, cmap='nipy_spectral',
-                          title=t.format(res.title(), str(c).zfill(2)))
+                          title=t.format(res.title(), str(c).zfill(2),
+                                time_array[1].strftime('%Y-%b')))
 
-    wp.add_soundingTH('bvf_moist', str(c), ax=ax1, wptime=time,
-                      wphgt=hgt, sigma=1, homedir=homedir)
+    # wp.add_soundingTH('bvf_moist', str(c), ax=ax1, wptime=time,
+                      # wphgt=hgt, sigma=1, homedir=homedir)
 
     if topdf:
         savename = o.format(str(c).zfill(2), res)
