@@ -213,7 +213,7 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
     else:
         hcbar = None
     
-    ax.set_xlim([-0.5, len(time_array) + 0.5])
+    ax.set_xlim([-3.0, len(time_array) + 3.0])
     ax.invert_xaxis()
     
     format_xaxis(ax, time_array, delta_hours=1)
@@ -731,7 +731,7 @@ def format_yaxis2(ax, hgt):
     lasthgt = hgt[-1]+(hgt[-1]-hgt[-2])
     hgt = np.append(hgt,lasthgt)
     lenhgt = len(hgt)
-    ax.set_ylim(-0.5, lenhgt)
+    ax.set_ylim(-3.0, lenhgt)
     f = interp1d(hgt, range(len(hgt)))
     ys = np.arange(0, 4.0, 0.2)
     new_yticks = f(ys)
