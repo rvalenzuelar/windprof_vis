@@ -12,6 +12,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.axes as maxes
 import numpy as np
+import numpy.ma as ma
 import os
 import Meteoframes as mf
 import sounding as ps
@@ -105,59 +106,77 @@ def plot_single():
     # plt.show()
 
 
-def plot_time_height(ax=None, wspd=None, time=None, height=None, **kwargs):
+def plot_time_height(ax=None, wspd=None, time=None, height=None,
+                     spd_range=None,spd_delta=None, cmap=None,
+                     title=None,cbar=None):
+    
     ''' NOAA wind profiler files after year 2000 indicate
     the start time of averaging period; so a timestamp of
     13 UTC indicates average between 13 and 14 UTC '''
-
-    spd_array = wspd
-    time_array = time
-    height_array = height
-    vrange = kwargs['vrange']
-    cname = kwargs['cname']
-    title = kwargs['title']
+  
 
     ''' make a color map of fixed colors '''
-    snsmap = sns.color_palette(cname, 24)
+    snsmap = sns.color_palette(cmap, 24)
     cmap = colors.ListedColormap(snsmap[2:])
-    if len(vrange) == 2:
-        vdelta = 1
-        bounds = range(vrange[0], vrange[1] + vdelta, vdelta)
-        vmin = vrange[0]
-        vmax = vrange[1]
+    if len(spd_range) == 2:
+        bounds = range(spd_range[0], spd_range[1]+spd_delta, spd_delta)
     else:
-        bounds = vrange
-        vmin = vrange[0]
-        vmax = vrange[-1]
+        bounds = spd_range
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
-    nrows, ncols = spd_array.shape
-    # print [nrows,ncols]
 
-    img = ax.imshow(spd_array, interpolation='nearest', origin='lower',
-                    cmap=cmap, norm=norm, vmin=vmin, vmax=vmax,
-                    extent=[0, ncols, 0, nrows], aspect='auto')  # extent helps to make correct timestamp
+    x=range(len(time))
+    y=range(len(height))
+    wspdm = ma.masked_where(np.isnan(wspd),wspd)
+    wspdm = ma.masked_where(wspdm<0, wspdm)
+    img = ax.pcolormesh(x,y,wspdm,cmap=cmap, norm=norm)
 
-    add_colorbar(img, ax)
-    format_xaxis(ax, time_array)
-    format_yaxis(ax, height_array)
+    if isinstance(cbar, maxes._subplots.Axes):
+        hcbar = add_colorbar(cbar, img,loc='right',
+                             label='[m s-1]',labelpad=20,
+                             fontsize=12)
+    elif isinstance(cbar,bool) and cbar:
+        hcbar = add_colorbar(ax, img,loc='right')
+    else:
+        hcbar = None
+    
+    ax.set_xlim([-3.0, len(time) + 3.0])
+    format_xaxis(ax, time, delta_hours=1)
     ax.invert_xaxis()
-    ax.set_ylabel('Range hight [km]')
-    ax.set_xlabel(r'$\Leftarrow$' + ' Time [UTC]')
-    ax.set_title('Date: ' + time_array[0].strftime('%Y-%b') + '\n')
+    ax.set_xlabel(r'$\leftarrow UTC \left[\stackrel{day}{time}\right]$',
+                                          fontsize=12)
+
+
+    ax.set_ylabel('Altitude MSL [km]')
+    ax.set_ylim([-0.2, 4.0])
+    
+    if title is not None:
+        ax.text(0., 1.01, title, transform=ax.transAxes)
+    
     plt.subplots_adjust(left=0.08, right=0.95)
     plt.draw()
 
-    return ax
+    return [ax,hcbar]
 
 
 def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
-                       height=None, cmap=None, spd_range=None, spd_delta=None,
+                       height=None, cmap=None, spd_range=None,
+                       spd_delta=None,
                        vdensity=None, hdensity=None, title=None,
                        cbar=True):
-    ''' NOAA wind profiler files after year 2000 indicate
-    the start time of averaging period; so a timestamp of
-    13 UTC indicates average between 13 and 14 UTC '''
+    
+    ''' 
+        NOAA wind profiler files after year 2000 indicate
+        the start time of averaging period; so a timestamp of
+        13 UTC indicates average between 13 and 14 UTC 
+    
+        There is a bug that plots wrong staff when using
+        meridional winds only     
+    
+    '''
+
+    from matplotlib import rcParams
+    rcParams['mathtext.default'] = 'sf'
 
     spd_array = wspd
     time_array = time
@@ -168,12 +187,12 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
     cmap = colors.ListedColormap(snsmap[2:])
     if len(spd_range) == 2:
         bounds = range(spd_range[0], spd_range[1] + spd_delta, spd_delta)
-        vmin = spd_range[0]
-        vmax = spd_range[1]
+#        vmin = spd_range[0]
+#        vmax = spd_range[1]
     else:
         bounds = spd_range
-        vmin = spd_range[0]
-        vmax = spd_range[-1]
+#        vmin = spd_range[0]
+#        vmax = spd_range[-1]
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
     nrows, ncols = spd_array.shape
@@ -207,20 +226,22 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
                     cmap=cmap, norm=norm)
 
     if isinstance(cbar, maxes._subplots.Axes):
-        hcbar = add_colorbar(cbar, barb)
+        hcbar = add_colorbar(cbar, barb,loc='right',
+                             label='[m s-1]',labelpad=20,
+                             fontsize=12)
     elif isinstance(cbar,bool) and cbar:
-        hcbar = add_colorbar(ax, barb)
+        hcbar = add_colorbar(ax, barb,loc='right')
     else:
         hcbar = None
     
     ax.set_xlim([-3.0, len(time_array) + 3.0])
-    ax.invert_xaxis()
-    
     format_xaxis(ax, time_array, delta_hours=1)
-    ax.set_xlabel(r'$\Leftarrow$' + ' Time [UTC]')
+    ax.invert_xaxis()
+    ax.set_xlabel(r'$\leftarrow UTC \left[\stackrel{day}{time}\right]$',
+                                          fontsize=12)
 
     format_yaxis2(ax, height_array)
-    ax.set_ylabel('Range hight [km]')
+    ax.set_ylabel('Altitude MSL [km]')
     
     if title is not None:
         ax.text(0., 1.01, title, transform=ax.transAxes)
@@ -231,30 +252,49 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
     return [ax,hcbar]
 
 
-def add_windstaff(wspd, wdir, time, hgt, **kwargs):
+def add_windstaff(wspd, wdir, time, hgt, ax=None, color='k',
+                  vdensity=0,hdensity=0):
 
-    if kwargs and kwargs['color']:
-        color = kwargs['color']
-    else:
-        color = 'k'
-    ax = kwargs['ax']
 
     ''' derive U and V components '''
     U = -wspd * np.sin(wdir * np.pi / 180.)
     V = -wspd * np.cos(wdir * np.pi / 180.)
-    x = np.array(range(len(time))) + 0.5  # wind staff in the middle of pixel
+    x = np.array(range(len(time)))  # wind staff in the middle of pixel
     y = np.array(range(hgt.size)) + 0.5  # wind staff in the middle of pixel
     X = np.tile(x, (y.size, 1))  # repeats x y.size times to make 2D array
     Y = np.tile(y, (x.size, 1)).T  # repeates y x.size times to make 2D array
+
+
+    ''' change arrays density '''
+    if vdensity == 0 or hdensity == 0:
+        pass
+    else:
+        U = fill2D_with_nans(inarray=U,start=[3,0],
+            size=[vdensity,hdensity])
+        V = fill2D_with_nans(inarray=V,start=[3,0],
+            size=[vdensity,hdensity])
+
     Uzero = U - U
     Vzero = V - V
 
-    ax.barbs(X, Y, U, V, color=color, sizes={
-             'height': 0}, length=5, linewidth=0.5, barb_increments={'half': 1})
-    ax.barbs(X, Y, Uzero, Vzero, color=color, sizes={
-             'emptybarb': 0.05}, fill_empty=True)
+    Um = ma.masked_where(np.isnan(U),U)
+    Vm = ma.masked_where(np.isnan(V),V)
 
-    return U, V
+
+    ax.barbs(X, Y, Um, Vm, color=color,
+             sizes={'height': 0},
+             length=4, linewidth=0.8,
+             barb_increments={'half': 1})
+    ax.barbs(X, Y, Uzero, Vzero, color=color, 
+             sizes={'emptybarb': 0.05},
+             fill_empty=True)
+
+    ax.set_xlim([-3.0, len(time) + 3.0])
+    format_xaxis(ax, time, delta_hours=1)
+    ax.invert_xaxis()
+    format_yaxis2(ax, hgt)
+
+#    return U, V
 
 
 def plot_scatter(ax=None, wspd=None, wdir=None, hgt=None, title=None):
@@ -461,7 +501,7 @@ def make_arrays(resolution='coarse', surface=False,
     nrows = len(
         wp[0].HT.values)  # number of altitude gates (fine same as coarse)
     hgt = wp[0].HT.values
-    print len(hgt)
+#    print len(hgt)
     wspd = np.empty([nrows, ncols])
     wdir = np.empty([nrows, ncols])
     timestamp = []
@@ -473,7 +513,7 @@ def make_arrays(resolution='coarse', surface=False,
         dirr = p.DIR.values
         wdir[:, i] = dirr
 
-    print wspd.shape
+#    print wspd.shape
     ''' add 2 bottom rows for adding surface obs '''
     bottom_rows = 2
     na = np.zeros((bottom_rows, ncols))
