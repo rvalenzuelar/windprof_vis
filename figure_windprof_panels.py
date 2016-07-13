@@ -53,13 +53,13 @@ with sns.axes_style("white"):
 
 
 ''' define ranges for tta and xpol in fraction of axis '''
-times={8:{'tta':[0.93,0.85,10],'xpol':[0.9,0.1,-38]},
-       9:{'tta':[0.95,0.4,10],'xpol':[0.85,0.25,-20]},
-       10:{'tta':[None,None],'xpol':[0.4,0.1,10]},
-       11:{'tta':[None,None],'xpol':[0.45,0.35,10]},
-       12:{'tta':[0.65,0.5,10],'xpol':[0.55,0.4,10]},
-       13:{'tta':[0.85,0.77,10],'xpol':[0.9,0.1,-38]},
-       14:{'tta':[None,None],'xpol':[0.58,0.43,10]}
+times={8:{ 'tta':[0.89,0.85], 'xpol':[0.93,0.13]},
+       9:{ 'tta':[0.86,0.40],  'xpol':[0.90,0.25]},
+       10:{'tta':[None,None], 'xpol':[0.41,0.13]},
+       11:{'tta':[None,None], 'xpol':[0.45,0.34]},
+       12:{'tta':[0.54,0.50],  'xpol':[0.56,0.38]},
+       13:{'tta':[0.85,0.77], 'xpol':[0.9,0.1]},
+       14:{'tta':[None,None], 'xpol':[0.58,0.41]}
        }
 
 labend={8:'15\n00',
@@ -182,8 +182,25 @@ for ax in axes:
             backgroundcolor='w',clip_on=True)
 
 
-#plt.show()
+axes[2].annotate('TTA',
+        xy=(0.6, 0.825), xycoords='axes fraction',
+        xytext=(0.8,0.8), textcoords='axes fraction',
+        zorder=1,
+        arrowprops=dict(arrowstyle="<->",
+                        ec=(0,0,0,alpha),
+                        fc=(0,0,0,alpha),
+                        linewidth=2))
+axes[2].annotate('X-pol',
+        xy=(0.6, 0.725), xycoords='axes fraction',
+        xytext=(0.8,0.7), textcoords='axes fraction',
+        zorder=1,
+        arrowprops=dict(arrowstyle="<->",
+                        ec=(0.8,0.8,0),
+                        fc=(0.8,0.8,0),
+                        linewidth=2))
 
+#plt.show()
+#
 fname='/home/raul/Desktop/windprof_panels.png'
 plt.savefig(fname, dpi=300, format='png',papertype='letter',
             bbox_inches='tight')
