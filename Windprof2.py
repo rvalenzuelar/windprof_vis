@@ -8,7 +8,6 @@
 
 
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.axes as maxes
 import numpy as np
@@ -21,7 +20,8 @@ from datetime import datetime, timedelta
 from matplotlib import colors
 from scipy.ndimage.filters import gaussian_filter
 from scipy.interpolate import interp1d
-from rv_utilities import add_colorbar, format_xaxis, fill2D_with_nans
+from rv_utilities import add_colorbar, format_xaxis2, \
+                         fill2D_with_nans, discrete_cmap
 
 ''' set directory and input files '''
 # local_directory='/home/rvalenzuela/'
@@ -35,8 +35,8 @@ def plot_vertical_shear(ax=None, wind=None, time=None, height=None):
 
     diff = np.diff(wind, axis=0)
     nrows, ncols = diff.shape
-    cmap = custom_cmap(17)
-    norm = colors.BoundaryNorm(np.arange(-20, 20), cmap.N)
+#    cmap = custom_cmap(17)
+#    norm = colors.BoundaryNorm(np.arange(-20, 20), cmap.N)
 
     img = ax.imshow(diff, interpolation='nearest', origin='lower',
                     # cmap=cmap,
@@ -79,8 +79,8 @@ def plot_single():
     l1 = 'BBY wind profiler - Total wind speed (color coded)'
 
     ''' add wind staffs '''
-    palette = sns.color_palette()
-    color = palette[2]
+#    palette = sns.color_palette()
+#    color = palette[2]
     u, v = add_windstaff(wspd, wdir, time, hgt, ax=ax, color=color)
 
     ''' add balloon sounding time-height section '''
@@ -108,7 +108,8 @@ def plot_single():
 
 def plot_time_height(ax=None, wspd=None, time=None, height=None,
                      spd_range=None,spd_delta=None, cmap=None,
-                     title=None,cbar=None):
+                     title=None,cbar=None,cbarinvi=False,
+                     timelabstep=None):
     
     ''' NOAA wind profiler files after year 2000 indicate
     the start time of averaging period; so a timestamp of
@@ -116,39 +117,41 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
   
 
     ''' make a color map of fixed colors '''
-    snsmap = sns.color_palette(cmap, 24)
-    cmap = colors.ListedColormap(snsmap[2:])
     if len(spd_range) == 2:
         bounds = range(spd_range[0], spd_range[1]+spd_delta, spd_delta)
     else:
         bounds = spd_range
+    cmap = discrete_cmap(len(bounds)+1,base_cmap=cmap,norm_range=[0.1,0.95])    
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
-
-    x=range(len(time))
-    y=range(len(height))
+    x = np.linspace(0,len(time),len(time)+1)
+    y = np.linspace(0,height.size, height.size+1)
+    
     wspdm = ma.masked_where(np.isnan(wspd),wspd)
     wspdm = ma.masked_where(wspdm<0, wspdm)
+    
     img = ax.pcolormesh(x,y,wspdm,cmap=cmap, norm=norm)
+#    img = ax.pcolormesh(x,y,wspdm,cmap=cmap,
+#                        vmin=spd_range[0],vmax=spd_range[1])
 
     if isinstance(cbar, maxes._subplots.Axes):
         hcbar = add_colorbar(cbar, img,loc='right',
                              label='[m s-1]',labelpad=20,
                              fontsize=12)
-    elif isinstance(cbar,bool) and cbar:
-        hcbar = add_colorbar(ax, img,loc='right')
+    elif isinstance(cbar,bool) and cbar is True:
+        hcbar = add_colorbar(ax, img, loc='right',invisible=cbarinvi)
     else:
         hcbar = None
     
-    ax.set_xlim([-3.0, len(time) + 3.0])
-    format_xaxis(ax, time, delta_hours=1)
+    
+    ax.set_xlim([-1.0, len(time) + 1.0])
+    if timelabstep is None:
+        timelabstep='1H'
+    format_xaxis2(ax, time, timelabstep=timelabstep)
     ax.invert_xaxis()
     ax.set_xlabel(r'$\leftarrow UTC \left[\stackrel{day}{time}\right]$',
                                           fontsize=12)
-
-
     ax.set_ylabel('Altitude MSL [km]')
-    ax.set_ylim([-0.2, 4.0])
     
     if title is not None:
         ax.text(0., 1.01, title, transform=ax.transAxes)
@@ -157,6 +160,48 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
     plt.draw()
 
     return [ax,hcbar]
+
+def add_windstaff(wspd, wdir, time, hgt, ax=None, color='k',
+                  vdensity=0,hdensity=0):
+
+
+    ''' derive U and V components '''
+    U = -wspd * np.sin(wdir * np.pi / 180.)
+    V = -wspd * np.cos(wdir * np.pi / 180.)
+
+    x = np.linspace(0.5,len(time)-0.5,len(time))
+    y = np.linspace(0.5,hgt.size-0.5, hgt.size)
+    X,Y=np.meshgrid(x, y)
+
+    ''' change arrays density '''
+    if vdensity == 0 or hdensity == 0:
+        pass
+    else:
+        U = fill2D_with_nans(inarray=U,start=[3,0],
+            size=[vdensity,hdensity])
+        V = fill2D_with_nans(inarray=V,start=[3,0],
+            size=[vdensity,hdensity])
+
+    Uzero = U - U
+    Vzero = V - V
+
+    Um = ma.masked_where(np.isnan(U),U)
+    Vm = ma.masked_where(np.isnan(V),V)
+
+    ax.barbs(X, Y, Um, Vm, color=color,
+             sizes={'height': 0},
+             length=4, linewidth=0.8,
+             barb_increments={'half': 1})
+    ax.barbs(X, Y, Uzero, Vzero, color=color, 
+             sizes={'emptybarb': 0.05},
+             fill_empty=True)
+
+#    ax.set_xlim([-3.0, len(time) + 3.0])
+#    format_xaxis(ax, time, delta_hours=1)
+#    ax.invert_xaxis()
+    format_yaxis2(ax, hgt)
+
+#    return U, V
 
 
 def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
@@ -183,8 +228,7 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
     height_array = height
 
     ''' make a color map of fixed colors '''
-    snsmap = sns.color_palette(cmap, 24)
-    cmap = colors.ListedColormap(snsmap[2:])
+    cmap = discrete_cmap(24,base_cmap=cmap,norm_range=[0.1,0.9])  
     if len(spd_range) == 2:
         bounds = range(spd_range[0], spd_range[1] + spd_delta, spd_delta)
 #        vmin = spd_range[0]
@@ -250,52 +294,6 @@ def plot_colored_staff(ax=None, wspd=None, wdir=None, time=None,
     plt.draw()
 
     return [ax,hcbar]
-
-
-def add_windstaff(wspd, wdir, time, hgt, ax=None, color='k',
-                  vdensity=0,hdensity=0):
-
-
-    ''' derive U and V components '''
-    U = -wspd * np.sin(wdir * np.pi / 180.)
-    V = -wspd * np.cos(wdir * np.pi / 180.)
-    x = np.array(range(len(time)))  # wind staff in the middle of pixel
-    y = np.array(range(hgt.size)) + 0.5  # wind staff in the middle of pixel
-    X = np.tile(x, (y.size, 1))  # repeats x y.size times to make 2D array
-    Y = np.tile(y, (x.size, 1)).T  # repeates y x.size times to make 2D array
-
-
-    ''' change arrays density '''
-    if vdensity == 0 or hdensity == 0:
-        pass
-    else:
-        U = fill2D_with_nans(inarray=U,start=[3,0],
-            size=[vdensity,hdensity])
-        V = fill2D_with_nans(inarray=V,start=[3,0],
-            size=[vdensity,hdensity])
-
-    Uzero = U - U
-    Vzero = V - V
-
-    Um = ma.masked_where(np.isnan(U),U)
-    Vm = ma.masked_where(np.isnan(V),V)
-
-
-    ax.barbs(X, Y, Um, Vm, color=color,
-             sizes={'height': 0},
-             length=4, linewidth=0.8,
-             barb_increments={'half': 1})
-    ax.barbs(X, Y, Uzero, Vzero, color=color, 
-             sizes={'emptybarb': 0.05},
-             fill_empty=True)
-
-    ax.set_xlim([-3.0, len(time) + 3.0])
-    format_xaxis(ax, time, delta_hours=1)
-    ax.invert_xaxis()
-    format_yaxis2(ax, hgt)
-
-#    return U, V
-
 
 def plot_scatter(ax=None, wspd=None, wdir=None, hgt=None, title=None):
 
@@ -553,7 +551,7 @@ def make_arrays(resolution='coarse', surface=False,
 
 
 def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
-                homedir=None):
+                homedir=None,interp_hgts=None):
 
     ''' 
     interpolates to grid with 40 gates,
@@ -576,11 +574,15 @@ def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
 
     ''' creates 2D arrays with spd and dir '''
     hgt = wp[0].HT.values
-    newh = np.linspace(0.160, 3.750, 40)
+    if interp_hgts is None:
+        # upper limit exceeds value in cases [3,7]
+        newh = np.linspace(0.160, 3.750, 40)
+    else:
+        # so we use custom limit
+        newh = interp_hgts
     wspd = np.zeros(len(newh))
     wdir = np.zeros(len(newh))
     timestamp = []
-
     first = True
     for p in wp:
         timestamp.append(p.timestamp)
@@ -703,13 +705,6 @@ def add_soundingTH(soundvar, usr_case, homedir=None, ax=None,
         cs = ax.contour(X, Y, sarray, colors='k', linewidths=0.8)
         ax.clabel(cs, fmt='%1.0f', fontsize=12)
 
-def get_scatter_colors():
-
-    colors = sns.light_palette('navy', len(x), reverse=True)
-    colors = sns.light_palette('green', len(x), reverse=True)
-    colors = sns.light_palette('red', len(x), reverse=True)
-    colors = sns.light_palette('purple', len(x), reverse=True)
-
 
 def get_filenames(usr_case, homedir=None):
 
@@ -727,12 +722,14 @@ def get_filenames(usr_case, homedir=None):
 def get_period(case=None, outfmt=None):
 
     reqdates = {'1': {'ini': [1998, 1, 18, 15], 'end': [1998, 1, 18, 20]},
-                '2': {'ini': [1998, 1, 26, 4], 'end': [1998, 1, 26, 9]},
-                '3': {'ini': [2001, 1, 23, 21], 'end': [2001, 1, 24, 2]},
-                '4': {'ini': [2001, 1, 25, 15], 'end': [2001, 1, 25, 20]},
-                '5': {'ini': [2001, 2, 9, 10], 'end': [2001, 2, 9, 15]},
-                '6': {'ini': [2001, 2, 11, 3], 'end': [2001, 2, 11, 8]},
-                '7': {'ini': [2001, 2, 17, 17], 'end': [2001, 2, 17, 22]},
+#                '2': {'ini': [1998, 1, 26, 4], 'end': [1998, 1, 26, 9]},
+#                '3': {'ini': [2001, 1, 23, 21], 'end': [2001, 1, 24, 2]},
+                '3':  pd.date_range(start='2001-01-23 00:00',periods=48,freq='60T'),
+#                '4': {'ini': [2001, 1, 25, 15], 'end': [2001, 1, 25, 20]},
+#                '5': {'ini': [2001, 2, 9, 10], 'end': [2001, 2, 9, 15]},
+#                '6': {'ini': [2001, 2, 11, 3], 'end': [2001, 2, 11, 8]},
+#                '7': {'ini': [2001, 2, 17, 17], 'end': [2001, 2, 17, 22]},
+                '7':  pd.date_range(start='2001-02-16 22:00',periods=34,freq='60T'),
                 '8':  pd.date_range(start='2003-01-12 00:00',periods=72,freq='60T'),
                 '9':  pd.date_range(start='2003-01-21 00:00',periods=72,freq='60T'),
                 '10': pd.date_range(start='2003-02-14 00:00',periods=72,freq='60T'),
