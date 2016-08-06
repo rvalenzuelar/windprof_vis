@@ -94,16 +94,14 @@ def plot_single():
     # l3 = '\nDate: '+ time[0].strftime('%Y-%m')
     # plt.suptitle(l1+l2+l3)
 
-    # ''' make time-height section of meridional wind speed '''
+    ''' make time-height section of meridional wind speed '''
     # ax=plot_time_height(v, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Meridional component')
     # add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
 
-    # ''' make time-height section of zonal wind speed '''
+    ''' make time-height section of zonal wind speed '''
     # ax=plot_time_height(u, time, hgt, vrange=range(-20,22,2),cname='BrBG',title='Zonal component')
     # add_windstaff(wspd,wdir,time,hgt,ax=ax, color=color)
 
-    plt.show(block=False)
-    # plt.show()
 
 
 def plot_time_height(ax=None, wspd=None, time=None, height=None,
@@ -131,33 +129,33 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
     wspdm = ma.masked_where(wspdm<0, wspdm)
     
     img = ax.pcolormesh(x,y,wspdm,cmap=cmap, norm=norm)
+    
 #    img = ax.pcolormesh(x,y,wspdm,cmap=cmap,
 #                        vmin=spd_range[0],vmax=spd_range[1])
+   
+    hcbar = add_colorbar(cbar[0], img,
+                         loc       = 'right',
+                         label     = '$[m\ s^{-1}]$',
+                         labelpad  = 20,
+                         fontsize  = 12,
+                         invisible = cbar[1] )
 
-    if isinstance(cbar, maxes._subplots.Axes):
-        hcbar = add_colorbar(cbar, img,loc='right',
-                             label='[m s-1]',labelpad=20,
-                             fontsize=12)
-    elif isinstance(cbar,bool) and cbar is True:
-        hcbar = add_colorbar(ax, img, loc='right',invisible=cbarinvi)
-    else:
-        hcbar = None
-    
     
     ax.set_xlim([-1.0, len(time) + 1.0])
+    
     if timelabstep is None:
         timelabstep='1H'
+        
     format_xaxis2(ax, time, timelabstep=timelabstep)
     ax.invert_xaxis()
     ax.set_xlabel(r'$\leftarrow UTC \left[\stackrel{day}{time}\right]$',
-                                          fontsize=12)
+                                          fontsize=20)
     ax.set_ylabel('Altitude MSL [km]')
     
     if title is not None:
         ax.text(0., 1.01, title, transform=ax.transAxes)
     
     plt.subplots_adjust(left=0.08, right=0.95)
-    plt.draw()
 
     return [ax,hcbar]
 
@@ -199,6 +197,7 @@ def add_windstaff(wspd, wdir, time, hgt, ax=None, color='k',
 #    ax.set_xlim([-3.0, len(time) + 3.0])
 #    format_xaxis(ax, time, delta_hours=1)
 #    ax.invert_xaxis()
+
     format_yaxis2(ax, hgt)
 
 #    return U, V
@@ -768,7 +767,9 @@ def format_yaxis2(ax, hgt):
     lasthgt = hgt[-1]+(hgt[-1]-hgt[-2])
     hgt = np.append(hgt,lasthgt)
     lenhgt = len(hgt)
-    ax.set_ylim(-3.0, lenhgt)
+
+    ax.set_ylim(-5.0, lenhgt)
+    
     f = interp1d(hgt, range(len(hgt)))
     ys = np.arange(0, 4.0, 0.2)
     new_yticks = f(ys)

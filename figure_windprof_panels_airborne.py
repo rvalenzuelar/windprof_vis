@@ -13,6 +13,9 @@ rcParams['ytick.major.pad'] = 3
 def cosd(array):
     return np.cos(np.radians(array))
 
+def sind(array):
+    return np.sin(np.radians(array))
+
 
 homedir = '/localdata'
 topdf = False
@@ -33,8 +36,6 @@ gs0 = gridspec.GridSpec(2, 1)
 axes = range(2)    
 axes[0] = plt.subplot(gs0[0],gid='(a) Jan 2001')
 axes[1] = plt.subplot(gs0[1],gid='(b) Feb 2001')
-
-
 
 #''' define ranges for tta and xpol in fraction of axis '''
 #times={8:{ 'tta':[0.89,0.85], 'xpol':[0.93,0.13]},
@@ -68,10 +69,18 @@ for c, ax in zip(case, axes):
         cbar = True
         cbarinvi=True
 
-    wspdMerid=-wspd*cosd(wdir);
+    ''' wind speed target '''
+    ucomp=-wspd*sind(wdir)
+    vcomp=-wspd*cosd(wdir)
+    x = ucomp*sind(230)
+    y = vcomp*cosd(230)
+    upslope=-(x+y)
+    wspd_target = vcomp
+    
+
 
     ax, hcbar = wp.plot_time_height(ax=ax, 
-                                      wspd=wspdMerid,
+                                      wspd=wspd_target,
                                       time=time, height=hgt,
                                       spd_range=[0, 28], spd_delta=2,
                                       cmap='nipy_spectral',
@@ -90,9 +99,9 @@ for ax in axes:
             backgroundcolor='w',clip_on=True)
 
 
-#plt.show()
+plt.show()
 
-fname='/home/raul/Desktop/windprof_panels_airborne.png'
-plt.savefig(fname, dpi=300, format='png',papertype='letter',
-            bbox_inches='tight')
+#fname='/home/raul/Desktop/windprof_panels_airborne.png'
+#plt.savefig(fname, dpi=300, format='png',papertype='letter',
+#            bbox_inches='tight')
 

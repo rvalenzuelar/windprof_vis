@@ -199,9 +199,9 @@ axes[2].annotate('X-pol',
                         fc=(0.8,0.8,0),
                         linewidth=2))
 
-#plt.show()
-#
-fname='/home/raul/Desktop/windprof_panels.png'
-plt.savefig(fname, dpi=300, format='png',papertype='letter',
-            bbox_inches='tight')
+plt.show()
+
+#fname='/home/raul/Desktop/windprof_panels.png'
+#plt.savefig(fname, dpi=300, format='png',papertype='letter',
+#            bbox_inches='tight')
 
