@@ -1,3 +1,7 @@
+'''
+    Raul valenzuela
+'''
+
 import Windprof2 as wp
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -31,11 +35,11 @@ o = 'case{}_total_wind_{}.pdf'
 scale=1
 plt.figure(figsize=(8*scale, 10*scale))
 
-gs0 = gridspec.GridSpec(2, 1)
+gs0 = gridspec.GridSpec(2, 1,hspace=0.15)
 
 axes = range(2)    
-axes[0] = plt.subplot(gs0[0],gid='(a) Jan 2001')
-axes[1] = plt.subplot(gs0[1],gid='(b) Feb 2001')
+axes[0] = plt.subplot(gs0[0],gid='(a) 23-24Jan01')
+axes[1] = plt.subplot(gs0[1],gid='(b) 17Feb01')
 
 #''' define ranges for tta and xpol in fraction of axis '''
 #times={8:{ 'tta':[0.89,0.85], 'xpol':[0.93,0.13]},
@@ -51,6 +55,8 @@ labend={3:'25\n00',
         7: '18\n08',
        }
 
+
+
 for c, ax in zip(case, axes):
 
     out = wp.make_arrays2(resolution=res,
@@ -62,7 +68,7 @@ for c, ax in zip(case, axes):
     wspd, wdir, time, hgt = out
 
 
-    if ax.get_gid() == '(a) Jan 2001':
+    if ax.get_gid() == '(a) 23-24Jan01':
         cbar = ax
         cbarinvi=False
     else:
@@ -81,17 +87,35 @@ for c, ax in zip(case, axes):
 
     ax, hcbar = wp.plot_time_height(ax=ax, 
                                       wspd=wspd_target,
-                                      time=time, height=hgt,
-                                      spd_range=[0, 28], spd_delta=2,
+                                      time=time,
+                                      height=hgt,
+                                      spd_range=[0, 28],
+                                      spd_delta=2,
                                       cmap='nipy_spectral',
-                                      cbar=cbar,
-                                      cbarinvi=cbarinvi,
-                                      timelabstep='6H'
+                                      cbar=(ax,cbarinvi),
                                       )
     
     wp.add_windstaff(wspd, wdir, time, hgt, color='k',ax=ax,
                      vdensity=1, hdensity=1)
     
+
+    ''' determine xticks '''
+    xtl = ax.get_xticklabels()
+    xt  = ax.get_xticks()    
+
+    if c == 3:
+        nmod = 0
+    else:
+        nmod = 2
+
+    ''' add xtick labels '''
+    newxtl = []
+    for i, lb in enumerate(xtl):
+        if np.mod(i, 6) in [nmod]:
+            newxtl.append(lb.get_text())
+        else:
+            newxtl.append('')
+    ax.set_xticklabels(newxtl)
 
 for ax in axes:
     ax.text(0.05,0.9,ax.get_gid(),size=14,va='top',
