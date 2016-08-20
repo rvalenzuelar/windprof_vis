@@ -440,8 +440,10 @@ def get_tta_times(resolution='coarse', surface=True, case=None,
         return timetta
 
 def get_surface_data(usr_case, homedir=None):
+    
+    
+    
     ''' set directory and input files '''
-    base_directory = local_directory + '/SURFACE'
     case = 'case' + usr_case.zfill(2)
     casedir = homedir + '/' + case
     out = os.listdir(casedir)
@@ -467,7 +469,9 @@ def get_surface_data(usr_case, homedir=None):
 
     df = []
     for f in file_met:
-        df.append(mf.parse_surface(f, index_field, name_field, locelevation))
+#        meteo = mf.parse_surface(f, index_field, name_field, locelevation)
+        meteo = mf.parse_surface(f)
+        df.append(meteo)
 
     if len(df) > 1:
         surface = pd.concat(df)
@@ -550,7 +554,7 @@ def make_arrays(resolution='coarse', surface=False,
 
 
 def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
-                homedir=None,interp_hgts=None):
+                interp_hgts=None):
 
     ''' 
     interpolates to grid with 40 gates,
@@ -558,7 +562,20 @@ def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
     (92 m resolution)
     '''
 
-    wpfiles = get_filenames(case, homedir=homedir+'/WINDPROF')
+    import os
+
+    try:
+        wprofdir = os.environ['WPROF_PATH']        
+    except KeyError:
+        print('*** Need to provide datadir or export WPROF_PATH ***')
+
+    try:
+        surfdir = os.environ['SURFACE_PATH']
+    except KeyError:
+        print('*** Need to provide datadir or export SURFACE_PATH ***')
+
+
+    wpfiles = get_filenames(case, homedir=wprofdir)
     wp = []
     ncols = 0  # number of timestamps
     for f in wpfiles:
@@ -610,7 +627,7 @@ def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
     wdir = np.flipud(np.vstack((np.flipud(wdir), na)))
     if surface:
         ''' make surface arrays '''
-        surface = get_surface_data(case, homedir=homedir+'/SURFACE')
+        surface = get_surface_data(case, homedir=surfdir)
         hour = pd.TimeGrouper('H')
         surf_wspd = surface.wspd.groupby(hour).mean()
         surf_wdir = surface.wdir.groupby(hour).mean()
