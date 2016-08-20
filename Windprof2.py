@@ -129,9 +129,6 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
     wspdm = ma.masked_where(wspdm<0, wspdm)
     
     img = ax.pcolormesh(x,y,wspdm,cmap=cmap, norm=norm)
-    
-#    img = ax.pcolormesh(x,y,wspdm,cmap=cmap,
-#                        vmin=spd_range[0],vmax=spd_range[1])
    
     hcbar = add_colorbar(cbar[0], img,
                          loc       = 'right',

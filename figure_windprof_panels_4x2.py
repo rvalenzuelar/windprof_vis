@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns
 import numpy as np
+import pandas as pd
 from matplotlib.gridspec import GridSpecFromSubplotSpec as gssp
 #from datetime import datetime
 
@@ -51,12 +52,12 @@ with sns.axes_style("white"):
                 subplot_spec=gs0[1],
                 wspace=0.05
                 )
-
+    
     gs02 = gssp(1, 2,
                 subplot_spec=gs0[2],
                 wspace=0.05
                 )
-
+    
     gs03 = gssp(1, 2,
                 subplot_spec=gs0[3],
                 wspace=0.05
@@ -69,18 +70,57 @@ with sns.axes_style("white"):
     axes[3] = plt.subplot(gs01[1],gid='(d) 09Jan04')
     axes[4] = plt.subplot(gs02[0],gid='(e) 02Feb04')
     axes[5] = plt.subplot(gs02[1],gid='(f) 16-18Feb04')
-    axes[6] = plt.subplot(gs03[0],gid='(g) 25-26Feb04')
+    axes[6] = plt.subplot(gs03[0],gid='(g) 25Feb04')
 
+wprof_range = ( ('2003-01-12 00:00','2003-01-14 23:00'),
+                ('2003-01-21 00:00','2003-01-23 23:00'),
+                ('2003-02-14 00:00','2003-02-16 23:00'),
+                ('2004-01-08 00:00','2004-01-10 22:00'),
+                ('2004-02-01 00:00','2004-02-03 22:00'),
+                ('2004-02-16 00:00','2004-02-18 23:00'),
+                ('2004-02-24 00:00','2004-02-26 22:00'),
+               )
 
-''' define ranges for tta and xpol in axis '''
-times={8:{ 'tta':[7,  11, 2.14],   'xpol':[6, 63, 0.15]},
-       9:{ 'tta':[10, 46, 0.24],   'xpol':[6, 54, 0.18]},
-       10:{'tta':[None,None,None], 'xpol':[44, 63, 0.46]},
-       11:{'tta':[None,None,None], 'xpol':[38, 47, 0.96]},
-       12:{'tta':[32, 36, 2.2], 'xpol':[30, 46, 0.55]},
-       13:{'tta':[10, 15, 1.8], 'xpol':[6, 66, 0.15]},
-       14:{'tta':[None,None,None], 'xpol':[30, 42, 0.72]}
-       }
+''' end time with one more hour to cover all previous hour '''
+xpol_range = (  ('2003-01-12 05:00','2003-01-14 17:00'),
+                ('2003-01-21 05:00','2003-01-23 10:00'),
+                ('2003-02-15 20:00','2003-02-16 16:00'),
+                ('2004-01-09 15:00','2004-01-10 00:00'),
+                ('2004-02-02 09:00','2004-02-02 21:00'),
+                ('2004-02-16 07:00','2004-02-18 19:00'),
+                ('2004-02-25 06:00','2004-02-25 20:00'),
+               )
+
+''' end time with one more hour to cover all previous hour '''
+tta_range = (   ('2003-01-12 07:00','2003-01-12 11:00'),
+                ('2003-01-21 07:00','2003-01-22 11:00'),
+                (None,None),
+                ('2004-01-09 14:00','2004-01-09 16:00'),
+                ('2004-02-02 10:00','2004-02-02 12:00'),
+                ('2004-02-16 09:00','2004-02-16 16:00'),
+                (None,None),
+               )
+
+''' define ranges for tta and xpol time annotation '''
+times = {
+            8:{ 'tta':[None,None, 2.14],'xpol':[None,None, 0.15]},
+            9:{ 'tta':[None,None, 0.24],'xpol':[None,None, 0.18]},
+            10:{'tta':[None,None,None], 'xpol':[None,None, 0.46]},
+            11:{'tta':[None,None, 2.2], 'xpol':[None,None, 0.96]},
+            12:{'tta':[None,None, 2.2], 'xpol':[None,None, 0.55]},
+            13:{'tta':[None,None, 1.8], 'xpol':[None,None, 0.15]},
+            14:{'tta':[None,None,None], 'xpol':[None,None, 0.72]}
+        }
+
+grp = zip(wprof_range, xpol_range, tta_range, times.values())
+for wprof,xpol,tta,time in grp:
+    drange = pd.date_range(start=wprof[0],end=wprof[1],freq='1H')
+    time['xpol'][0] = np.where(drange==xpol[0])[0]
+    time['xpol'][1] = np.where(drange==xpol[1])[0]
+    if None not in tta:
+        drange = pd.date_range(start=wprof[0],end=wprof[1],freq='1H')
+        time['tta'][0] = np.where(drange==tta[0])[0]
+        time['tta'][1] = np.where(drange==tta[1])[0]
 
 
 ''' last xlabel '''
@@ -99,7 +139,7 @@ for c, ax in zip(case, axes):
                                             surface    = True,
                                             case       = str(c),
                                             homedir    = homedir)
-
+#    print [time[0],time[-1]]
     if c == 14:
         cbar_inv = False
     else:
@@ -123,18 +163,19 @@ for c, ax in zip(case, axes):
     
     
     ''' add arrow annotations '''    
-    vpos = -3.11
+    vpos1 = -3.11
+    vpos2 = -2.0
     arrstyle = '|-|,widthA = 0.5,widthB = 0.5'
     ttacolor = (0,0,0)
     xplcolor = (0.7,0.7,0.7)
     
     if None not in times[c]['xpol']:
-        st = times[c]['xpol'][0]
-        en = times[c]['xpol'][1]
+        st = times[c]['xpol'][0]-0.5
+        en = times[c]['xpol'][1]+0.5
         frac = times[c]['xpol'][2]
         ax.annotate('',
-                xy         = (st, vpos),
-                xytext     = (en, vpos),
+                xy         = (st, vpos1),
+                xytext     = (en, vpos1),
                 xycoords   = 'data',
                 textcoords = 'data',
                 zorder     = 10000,
@@ -145,12 +186,12 @@ for c, ax in zip(case, axes):
                 )
         
     if None not in times[c]['tta']:
-        st = times[c]['tta'][0]
-        en = times[c]['tta'][1]
+        st = times[c]['tta'][0]-0.5
+        en = times[c]['tta'][1]+0.5
         frac = times[c]['tta'][2]
         ax.annotate('',
-                xy         = (st, vpos ),
-                xytext     = (en, vpos),
+                xy         = (st, vpos2),
+                xytext     = (en, vpos2),
                 xycoords   = 'data',
                 textcoords = 'data',
                 zorder     = 10000,
@@ -235,9 +276,9 @@ for c, ax in zip(case, axes):
 
 
 
-#plt.show()
+plt.show()
 
-fname='/home/raul/Desktop/windprof_panels.png'
-plt.savefig(fname, dpi=100, format='png',papertype='letter',
-            bbox_inches='tight')
+#fname='/home/raul/Desktop/windprof_panels.png'
+#plt.savefig(fname, dpi=100, format='png',papertype='letter',
+#            bbox_inches='tight')
 
