@@ -107,7 +107,7 @@ def plot_single():
 def plot_time_height(ax=None, wspd=None, time=None, height=None,
                      spd_range=None,spd_delta=None, cmap=None,
                      title=None,cbar=None,cbarinvi=False,
-                     timelabstep=None):
+                     timelabstep=None,kind='pcolormesh'):
     
     ''' NOAA wind profiler files after year 2000 indicate
     the start time of averaging period; so a timestamp of
@@ -126,9 +126,14 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
     y = np.linspace(0,height.size, height.size+1)
     
     wspdm = ma.masked_where(np.isnan(wspd),wspd)
-    wspdm = ma.masked_where(wspdm<0, wspdm)
+#    wspdm = ma.masked_where(wspdm<0, wspdm)
     
-    img = ax.pcolormesh(x,y,wspdm,cmap=cmap, norm=norm)
+    if kind == 'contourf':
+        x,y = np.meshgrid(np.linspace(0,len(time),len(time)),
+                          np.linspace(0,height.size, height.size))
+        img = ax.contourf(x,y,wspdm,cmap=cmap, norm=norm) 
+    else:
+        img = ax.pcolormesh(x,y,wspdm,cmap=cmap, norm=norm)
    
     hcbar = add_colorbar(cbar[0], img,
                          loc       = 'right',
@@ -157,7 +162,8 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
     return [ax,hcbar]
 
 def add_windstaff(wspd, wdir, time, hgt, ax=None, color='k',
-                  vdensity=0,hdensity=0):
+                  vdensity=0,hdensity=0,head_size=0.05,
+                  tail_length=4):
 
 
     ''' derive U and V components '''
@@ -183,12 +189,17 @@ def add_windstaff(wspd, wdir, time, hgt, ax=None, color='k',
     Um = ma.masked_where(np.isnan(U),U)
     Vm = ma.masked_where(np.isnan(V),V)
 
-    ax.barbs(X, Y, Um, Vm, color=color,
+    ''' barb tail '''
+    ax.barbs(X, Y, Um, Vm,
+             color=color,
              sizes={'height': 0},
-             length=4, linewidth=0.8,
+             length=tail_length,
+             linewidth=0.8,
              barb_increments={'half': 1})
+    
+    ''' barb head '''
     ax.barbs(X, Y, Uzero, Vzero, color=color, 
-             sizes={'emptybarb': 0.05},
+             sizes={'emptybarb': head_size},
              fill_empty=True)
 
 #    ax.set_xlim([-3.0, len(time) + 3.0])
@@ -446,27 +457,18 @@ def get_surface_data(usr_case, homedir=None):
     out = os.listdir(casedir)
     out.sort()
     files = []
+        
     for f in out:
-        if f[-3:] == 'met':
+        if f[-3:] in ['met','urf']:
             files.append(f)
+        
     file_met = []
     for f in files:
         if f[:3] == 'bby':
             file_met.append(casedir + '/' + f)
-    name_field = ['press', 'temp', 'rh', 'wspd', 'wdir', 'precip', 'mixr']
-    if usr_case in ['1', '2']:
-        index_field = [3, 4, 10, 5, 6, 11, 13]
-    elif usr_case in ['3', '4', '5', '6', '7']:
-        index_field = [3, 6, 9, 10, 12, 17, 26]
-    else:
-        index_field = [3, 4, 5, 6, 8, 13, 15]
-
-    locname = 'Bodega Bay'
-    locelevation = 15  # [m]
 
     df = []
     for f in file_met:
-#        meteo = mf.parse_surface(f, index_field, name_field, locelevation)
         meteo = mf.parse_surface(f)
         df.append(meteo)
 
@@ -550,8 +552,8 @@ def make_arrays(resolution='coarse', surface=False,
     return wspd, wdir, timestamp, hgt
 
 
-def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
-                interp_hgts=None):
+def make_arrays2(resolution='coarse', add_surface=False, case=None,
+                 period=False, interp_hgts=None):
 
     ''' 
     interpolates to grid with 40 gates,
@@ -573,6 +575,8 @@ def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
 
 
     wpfiles = get_filenames(case, homedir=wprofdir)
+    wpfiles.sort()
+    
     wp = []
     ncols = 0  # number of timestamps
     for f in wpfiles:
@@ -593,14 +597,15 @@ def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
     else:
         # so we use custom limit
         newh = interp_hgts
+
     wspd = np.zeros(len(newh))
     wdir = np.zeros(len(newh))
     timestamp = []
     first = True
+        
     for p in wp:
-        timestamp.append(p.timestamp)
-
         ''' for each hourly profile '''
+        timestamp.append(p.timestamp)
         fs = interp1d(hgt, p.SPD.values)
         fd = interp1d(hgt, p.DIR.values)
         news = fs(newh)
@@ -615,23 +620,36 @@ def make_arrays2(resolution='coarse', surface=False, case=None, period=False,
 
     wspd = wspd.T
     wdir = wdir.T
+    timestamp = np.asarray(timestamp)
+  
 
     ''' add 2 bottom rows for adding surface obs '''
     bottom_rows = 2
-    na = np.zeros((bottom_rows, ncols))
-    na[:] = np.nan
+    na = np.zeros((bottom_rows, ncols)) + np.nan
     wspd = np.flipud(np.vstack((np.flipud(wspd), na)))
     wdir = np.flipud(np.vstack((np.flipud(wdir), na)))
-    if surface:
-        ''' make surface arrays '''
-        surface = get_surface_data(case, homedir=surfdir)
+    if add_surface:
         hour = pd.TimeGrouper('H')
-        surf_wspd = surface.wspd.groupby(hour).mean()
-        surf_wdir = surface.wdir.groupby(hour).mean()
-        surf_st = np.where(np.asarray(timestamp) == surf_wspd.index[0])[0][0]
-        surf_en = np.where(np.asarray(timestamp) == surf_wspd.index[-1])[0][0]
-        wspd[0, surf_st:surf_en + 1] = surf_wspd
-        wdir[0, surf_st:surf_en + 1] = surf_wdir
+        ''' make surface arrays '''
+        try:
+            surface = get_surface_data(case, homedir=surfdir)
+            surf_wspd = surface.wspd
+            surf_wdir = surface.wdir            
+            u = -surf_wspd*np.sin(np.radians(surf_wdir))
+            v = -surf_wspd*np.cos(np.radians(surf_wdir))
+            u_mean = u.groupby(hour).mean()
+            v_mean = v.groupby(hour).mean()            
+            surf_wspd = np.sqrt(u_mean**2 + v_mean**2)
+            surf_wdir = 270 - (np.arctan2(v_mean,u_mean)*180/np.pi)
+            surf_wdir[surf_wdir>360] = surf_wdir[surf_wdir>360]-360
+            surf_st = np.where(surf_wspd.index == timestamp[0])[0][0]
+            surf_en = np.where(surf_wspd.index == timestamp[-1])[0][0]
+            wspd[0, surf_st:surf_en + 1] = surf_wspd.values
+            wdir[0, surf_st:surf_en + 1] = surf_wdir.values
+            
+        except ValueError:
+            wspd[0, surf_st:surf_en + 1] = surf_wspd.iloc[:surf_en+1].values
+            wdir[0, surf_st:surf_en + 1] = surf_wdir.iloc[:surf_en+1].values
 
     hgt = np.hstack(([0., 0.05], newh))
 
@@ -737,12 +755,12 @@ def get_period(case=None, outfmt=None):
     reqdates = {'1': {'ini': [1998, 1, 18, 15], 'end': [1998, 1, 18, 20]},
 #                '2': {'ini': [1998, 1, 26, 4], 'end': [1998, 1, 26, 9]},
 #                '3': {'ini': [2001, 1, 23, 21], 'end': [2001, 1, 24, 2]},
-                '3':  pd.date_range(start='2001-01-23 00:00',periods=48,freq='60T'),
+                '3':  pd.date_range(start='2001-01-23 00:00',periods=31,freq='60T'),
 #                '4': {'ini': [2001, 1, 25, 15], 'end': [2001, 1, 25, 20]},
 #                '5': {'ini': [2001, 2, 9, 10], 'end': [2001, 2, 9, 15]},
 #                '6': {'ini': [2001, 2, 11, 3], 'end': [2001, 2, 11, 8]},
 #                '7': {'ini': [2001, 2, 17, 17], 'end': [2001, 2, 17, 22]},
-                '7':  pd.date_range(start='2001-02-16 22:00',periods=34,freq='60T'),
+                '7':  pd.date_range(start='2001-02-17 00:00',periods=25,freq='60T'),
                 '8':  pd.date_range(start='2003-01-12 00:00',periods=72,freq='60T'),
                 '9':  pd.date_range(start='2003-01-21 00:00',periods=72,freq='60T'),
                 '10': pd.date_range(start='2003-02-14 00:00',periods=72,freq='60T'),

@@ -135,10 +135,10 @@ labend={8:'15\n00',
 
 for c, ax in zip(case, axes):
 
-    wspd, wdir, time, hgt = wp.make_arrays2(resolution = res,
-                                            surface    = True,
-                                            case       = str(c),
-                                            homedir    = homedir)
+    wspd, wdir, time, hgt = wp.make_arrays2(resolution  = res,
+                                            add_surface = True,
+                                            case        = str(c),
+                                            )
 #    print [time[0],time[-1]]
     if c == 14:
         cbar_inv = False
@@ -147,18 +147,24 @@ for c, ax in zip(case, axes):
 
     wspdMerid=-wspd*cosd(wdir);
 
+    if c == 13:
+        foo = wspdMerid
+
     ax, hcbar = wp.plot_time_height(ax        = ax, 
                                     wspd      = wspdMerid,
                                     time      = time,
                                     height    = hgt,
-                                    spd_range = [0, 30],
+                                    spd_range = [-5, 30],
                                     spd_delta = 4,
                                     cmap      = 'nipy_spectral',
                                     cbar      = (ax,cbar_inv)
                                     )
     
-    wp.add_windstaff(wspd, wdir, time, hgt, color='k',ax=ax,
-                     vdensity=2, hdensity=2)
+    wp.add_windstaff(wspd, wdir, time, hgt,
+                     color=(0.6,0.6,0.6),
+                     ax=ax,
+                     vdensity=2,
+                     hdensity=2)
     
     
     
@@ -278,7 +284,8 @@ for c, ax in zip(case, axes):
 
 plt.show()
 
-#fname='/home/raul/Desktop/windprof_panels.png'
+##fname='/home/raul/Desktop/fig_windprof_panels.png'
+#fname='/Users/raulv/Desktop/fig_windprof_panels.png'
 #plt.savefig(fname, dpi=100, format='png',papertype='letter',
 #            bbox_inches='tight')
 

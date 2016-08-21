@@ -5,7 +5,7 @@
 import Windprof2 as wp
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-#import seaborn as sns
+import seaborn as sns
 import numpy as np
 #from matplotlib.gridspec import GridSpecFromSubplotSpec as gssp
 #from datetime import datetime
@@ -29,27 +29,22 @@ res = 'coarse'
 o = 'case{}_total_wind_{}.pdf'
 
 ''' creates plot with seaborn style '''
-#with sns.axes_style("white"):
+with sns.axes_style("white"):
+    sns.set_style('ticks',
+              {'xtick.direction': u'in',
+               'ytick.direction': u'in'}
+              )
     
 
-scale=1
-plt.figure(figsize=(8*scale, 10*scale))
+    scale=1
+    plt.figure(figsize=(8*scale, 10*scale))
+    
+    gs0 = gridspec.GridSpec(2, 1,hspace=0.15)
+    
+    axes = range(2)    
+    axes[0] = plt.subplot(gs0[0],gid='(a) 23-24Jan01')
+    axes[1] = plt.subplot(gs0[1],gid='(b) 17Feb01')
 
-gs0 = gridspec.GridSpec(2, 1,hspace=0.15)
-
-axes = range(2)    
-axes[0] = plt.subplot(gs0[0],gid='(a) 23-24Jan01')
-axes[1] = plt.subplot(gs0[1],gid='(b) 17Feb01')
-
-#''' define ranges for tta and xpol in fraction of axis '''
-#times={8:{ 'tta':[0.89,0.85], 'xpol':[0.93,0.13]},
-#       9:{ 'tta':[0.86,0.40],  'xpol':[0.90,0.25]},
-#       10:{'tta':[None,None], 'xpol':[0.41,0.13]},
-#       11:{'tta':[None,None], 'xpol':[0.45,0.34]},
-#       12:{'tta':[0.54,0.50],  'xpol':[0.56,0.38]},
-#       13:{'tta':[0.85,0.77], 'xpol':[0.9,0.1]},
-#       14:{'tta':[None,None], 'xpol':[0.58,0.41]}
-#       }
 
 labend={3:'25\n00',
         7: '18\n08',
@@ -60,10 +55,9 @@ labend={3:'25\n00',
 for c, ax in zip(case, axes):
 
     out = wp.make_arrays2(resolution=res,
-                            surface=True,
-                            case=str(c),
-                            homedir=homedir,
-                            interp_hgts=np.linspace(0.160, 3.74, 40))
+                          add_surface=True,
+                          case=str(c),
+                          interp_hgts=np.linspace(0.160, 3.74, 40))
 
     wspd, wdir, time, hgt = out
 
@@ -76,37 +70,40 @@ for c, ax in zip(case, axes):
         cbarinvi=True
 
     ''' wind speed target '''
-    ucomp=-wspd*sind(wdir)
-    vcomp=-wspd*cosd(wdir)
+    ucomp = -wspd*sind(wdir)
+    vcomp = -wspd*cosd(wdir)
     x = ucomp*sind(230)
     y = vcomp*cosd(230)
-    upslope=-(x+y)
+    upslope = -(x+y)
     wspd_target = vcomp
     
 
 
-    ax, hcbar = wp.plot_time_height(ax=ax, 
-                                      wspd=wspd_target,
-                                      time=time,
-                                      height=hgt,
-                                      spd_range=[0, 28],
-                                      spd_delta=2,
-                                      cmap='nipy_spectral',
-                                      cbar=(ax,cbarinvi),
-                                      )
+    ax, hcbar = wp.plot_time_height(ax        = ax, 
+                                    wspd      = wspd_target,
+                                    time      = time,
+                                    height    = hgt,
+                                    spd_range = [-4, 32],
+                                    spd_delta = 2,
+                                    cmap      = 'nipy_spectral',
+                                    cbar      = (ax,cbarinvi),
+                                    kind      = 'pcolormesh',
+                                    )
     
-    wp.add_windstaff(wspd, wdir, time, hgt, color='k',ax=ax,
-                     vdensity=1, hdensity=1)
+    wp.add_windstaff(wspd, wdir, time, hgt,
+                     color     = (0.4,0.4,0.4),
+                     ax        = ax,
+                     vdensity  = 2,
+                     hdensity  = 1,
+                     head_size = 0.08,
+                     tail_length = 5)
     
 
     ''' determine xticks '''
     xtl = ax.get_xticklabels()
     xt  = ax.get_xticks()    
 
-    if c == 3:
-        nmod = 0
-    else:
-        nmod = 2
+    nmod = 0
 
     ''' add xtick labels '''
     newxtl = []
@@ -123,9 +120,10 @@ for ax in axes:
             backgroundcolor='w',clip_on=True)
 
 
-plt.show()
+#plt.show()
 
-#fname='/home/raul/Desktop/windprof_panels_airborne.png'
-#plt.savefig(fname, dpi=300, format='png',papertype='letter',
-#            bbox_inches='tight')
+#fname='/home/raul/Desktop/fig_windprof_panels_airborne.png'
+fname='/Users/raulv/Desktop/fig_windprof_panels_airborne.png'
+plt.savefig(fname, dpi=300, format='png',papertype='letter',
+            bbox_inches='tight')
 
