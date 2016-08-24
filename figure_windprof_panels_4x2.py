@@ -161,10 +161,14 @@ for c, ax in zip(case, axes):
                                     )
     
     wp.add_windstaff(wspd, wdir, time, hgt,
-                     color=(0.6,0.6,0.6),
-                     ax=ax,
-                     vdensity=2,
-                     hdensity=2)
+#                     color       = (0.5,0.5,0.5),
+                     color       = (0.0,0.0,0.0),
+                     ax          = ax,
+                     vdensity    = 2,
+                     hdensity    = 2,
+                     head_size   = 0.07,
+                     tail_length = 4.5,
+                     )
     
     
     
@@ -282,10 +286,10 @@ for c, ax in zip(case, axes):
 
 
 
-plt.show()
+#plt.show()
 
-##fname='/home/raul/Desktop/fig_windprof_panels.png'
+fname='/home/raul/Desktop/fig_windprof_panels.png'
 #fname='/Users/raulv/Desktop/fig_windprof_panels.png'
-#plt.savefig(fname, dpi=100, format='png',papertype='letter',
-#            bbox_inches='tight')
+plt.savefig(fname, dpi=100, format='png',papertype='letter',
+            bbox_inches='tight')
 
