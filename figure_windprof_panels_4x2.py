@@ -1,3 +1,11 @@
+'''
+    Make wind profile plots
+    
+    Raul Valenzuela
+    raul.valenzuela@colorado.edu
+
+'''
+
 import Windprof2 as wp
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
