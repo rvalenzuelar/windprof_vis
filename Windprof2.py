@@ -763,11 +763,11 @@ def get_period(case=None, outfmt=None):
                 '7':  pd.date_range(start='2001-02-17 00:00',periods=25,freq='60T'),
                 '8':  pd.date_range(start='2003-01-12 00:00',periods=72,freq='60T'),
                 '9':  pd.date_range(start='2003-01-21 00:00',periods=72,freq='60T'),
-                '10': pd.date_range(start='2003-02-14 00:00',periods=72,freq='60T'),
-                '11': pd.date_range(start='2004-01-08 00:00',periods=72,freq='60T'),
-                '12': pd.date_range(start='2004-02-01 00:00',periods=72,freq='60T'),
+                '10': pd.date_range(start='2003-02-15 00:00',periods=48,freq='60T'),
+                '11': pd.date_range(start='2004-01-09 00:00',periods=24,freq='60T'),
+                '12': pd.date_range(start='2004-02-02 00:00',periods=24,freq='60T'),
                 '13': pd.date_range(start='2004-02-16 00:00',periods=96,freq='60T'),
-                '14': pd.date_range(start='2004-02-24 00:00',periods=72,freq='60T')
+                '14': pd.date_range(start='2004-02-25 00:00',periods=24,freq='60T')
                 }
     if outfmt is None:
         return reqdates[str(case)]

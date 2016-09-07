@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 '''
     Make wind profile plots
     
@@ -5,6 +6,15 @@
     raul.valenzuela@colorado.edu
 
 '''
+=======
+# -*- coding: utf-8 -*-
+"""
+Created on 2016
+
+@author: raul
+"""
+
+>>>>>>> 73699d25d34b533726957aac4428c8fa5e98b25c
 
 import Windprof2 as wp
 import matplotlib.pyplot as plt
@@ -45,7 +55,7 @@ with sns.axes_style("white"):
               )
 
     scale=1.3
-    plt.figure(figsize=(8*scale, 11*scale))
+    plt.figure(figsize=(8*scale, 10*scale))
     
     gs0 = gridspec.GridSpec(4, 1,
                             hspace = 0.25,
@@ -82,21 +92,21 @@ with sns.axes_style("white"):
 
 wprof_range = ( ('2003-01-12 00:00','2003-01-14 23:00'),
                 ('2003-01-21 00:00','2003-01-23 23:00'),
-                ('2003-02-14 00:00','2003-02-16 23:00'),
-                ('2004-01-08 00:00','2004-01-10 22:00'),
-                ('2004-02-01 00:00','2004-02-03 22:00'),
+                ('2003-02-15 00:00','2003-02-16 23:00'),
+                ('2004-01-09 00:00','2004-01-09 23:00'),
+                ('2004-02-02 00:00','2004-02-02 23:00'),
                 ('2004-02-16 00:00','2004-02-18 23:00'),
-                ('2004-02-24 00:00','2004-02-26 22:00'),
+                ('2004-02-25 00:00','2004-02-25 23:00'),
                )
 
 ''' end time with one more hour to cover all previous hour '''
-xpol_range = (  ('2003-01-12 05:00','2003-01-14 17:00'),
-                ('2003-01-21 05:00','2003-01-23 10:00'),
-                ('2003-02-15 20:00','2003-02-16 16:00'),
-                ('2004-01-09 15:00','2004-01-10 00:00'),
-                ('2004-02-02 09:00','2004-02-02 21:00'),
-                ('2004-02-16 07:00','2004-02-18 19:00'),
-                ('2004-02-25 06:00','2004-02-25 20:00'),
+xpol_range = (  ('2003-01-12 05:00','2003-01-14 16:00'),
+                ('2003-01-21 05:00','2003-01-23 09:00'),
+                ('2003-02-15 20:00','2003-02-16 15:00'),
+                ('2004-01-09 15:00','2004-01-09 23:00'),
+                ('2004-02-02 09:00','2004-02-02 20:00'),
+                ('2004-02-16 07:00','2004-02-18 18:00'),
+                ('2004-02-25 06:00','2004-02-25 19:00'),
                )
 
 ''' end time with one more hour to cover all previous hour '''
@@ -135,10 +145,10 @@ for wprof,xpol,tta,time in grp:
 labend={8:'15\n00',
        9: '24\n00',
        10:'17\n00',
-       11:'11\n00',
-       12:'04\n00',
+       11:'10\n00',
+       12:'03\n00',
        13:'19\n00',
-       14:'27\n00'
+       14:'26\n00'
        }
 
 for c, ax in zip(case, axes):
@@ -169,10 +179,14 @@ for c, ax in zip(case, axes):
                                     )
     
     wp.add_windstaff(wspd, wdir, time, hgt,
-                     color=(0.6,0.6,0.6),
-                     ax=ax,
-                     vdensity=2,
-                     hdensity=2)
+#                     color       = (0.5,0.5,0.5),
+                     color       = (0.0,0.0,0.0),
+                     ax          = ax,
+                     vdensity    = 2,
+                     hdensity    = 2,
+                     head_size   = 0.07,
+                     tail_length = 4.5,
+                     )
     
     
     
@@ -184,8 +198,8 @@ for c, ax in zip(case, axes):
     xplcolor = (0.7,0.7,0.7)
     
     if None not in times[c]['xpol']:
-        st = times[c]['xpol'][0]-0.5
-        en = times[c]['xpol'][1]+0.5
+        st = times[c]['xpol'][0]-0.3
+        en = times[c]['xpol'][1]
         frac = times[c]['xpol'][2]
         ax.annotate('',
                 xy         = (st, vpos1),
@@ -200,8 +214,8 @@ for c, ax in zip(case, axes):
                 )
         
     if None not in times[c]['tta']:
-        st = times[c]['tta'][0]-0.5
-        en = times[c]['tta'][1]+0.5
+        st = times[c]['tta'][0]-0.3
+        en = times[c]['tta'][1]
         frac = times[c]['tta'][2]
         ax.annotate('',
                 xy         = (st, vpos2),
@@ -217,8 +231,8 @@ for c, ax in zip(case, axes):
 
     ''' add arrow legend '''
     axes[2].annotate('TTA',
-            xy=(20, 33), xycoords='data',
-            xytext=(12, 32), textcoords='data',
+            xy=(10, 33), xycoords='data',
+            xytext=(5, 32), textcoords='data',
             zorder=1,
             arrowprops=dict(arrowstyle = arrstyle,
                             ec         = ttacolor,
@@ -226,8 +240,8 @@ for c, ax in zip(case, axes):
                             linewidth  = 2))
     
     axes[2].annotate('X-pol',
-            xy=(20, 29), xycoords='data',
-            xytext=(12, 28), textcoords='data',
+            xy=(10, 29), xycoords='data',
+            xytext=(5, 28), textcoords='data',
             zorder=1,
             arrowprops=dict(arrowstyle = arrstyle,
                             ec         = xplcolor,
@@ -288,12 +302,28 @@ for c, ax in zip(case, axes):
             weight='bold',transform=ax.transAxes,
             backgroundcolor='w',clip_on=True)
 
+    if c == 10:
+        ax.text(39,12.5,'MISSING\nDATA',size=15,
+                ha='center', weight='bold')
+        ax.annotate('',
+                xy         = (48, 12),
+                xytext     = (28, 12),
+                xycoords   = 'data',
+                textcoords = 'data',
+                zorder     = 10000,
+                arrowprops=dict(arrowstyle = '<|-|>',
+                                ec         = 'k',
+                                fc         = 'k',
+                                )
+                )        
 
 
-plt.show()
+plt.subplots_adjust(left=0.01,bottom=0.03)
 
-##fname='/home/raul/Desktop/fig_windprof_panels.png'
+#plt.show()
+#
+fname='/home/raul/Desktop/fig_windprof_panels.png'
 #fname='/Users/raulv/Desktop/fig_windprof_panels.png'
-#plt.savefig(fname, dpi=100, format='png',papertype='letter',
-#            bbox_inches='tight')
+plt.savefig(fname, dpi=100, format='png',papertype='letter',
+            bbox_inches='tight')
 
