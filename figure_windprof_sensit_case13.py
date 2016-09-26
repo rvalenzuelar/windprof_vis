@@ -41,7 +41,7 @@ case = range(13,14)
 res = 'coarse'
 o = 'case{}_total_wind_{}.pdf'
 
-surf_file = '/Volumes/LUZMA/RAUL_MAC/Documents/Documents/psdapp_old/SURFACE/case13/czc04047.met'
+surf_file = '/Users/raulvalenzuela/Data/SURFACE/case13/czc04047.met'
 czd = mf.parse_surface(surf_file)
 czdh = czd.preciph[~czd.preciph.isnull()]
 
