@@ -119,7 +119,9 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
         bounds = range(spd_range[0], spd_range[1]+spd_delta, spd_delta)
     else:
         bounds = spd_range
-    cmap = discrete_cmap(len(bounds)+1,base_cmap=cmap,norm_range=[0.1,0.95])    
+    cmap = discrete_cmap(len(bounds)+1,
+                         base_cmap=cmap,
+                         norm_range=[0.2,1.0])
     norm = colors.BoundaryNorm(bounds, cmap.N)
 
     x = np.linspace(0,len(time),len(time)+1)
@@ -159,7 +161,7 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
     
     plt.subplots_adjust(left=0.08, right=0.95)
 
-    return [ax,hcbar]
+    return [ax,hcbar,img]
 
 def add_windstaff(wspd, wdir, time, hgt, ax=None, color='k',
                   vdensity=0,hdensity=0,head_size=0.05,
@@ -175,13 +177,12 @@ def add_windstaff(wspd, wdir, time, hgt, ax=None, color='k',
     X,Y=np.meshgrid(x, y)
 
     ''' change arrays density '''
-    if vdensity == 0 or hdensity == 0:
-        pass
-    else:
-        U = fill2D_with_nans(inarray=U,start=[3,0],
-            size=[vdensity,hdensity])
-        V = fill2D_with_nans(inarray=V,start=[3,0],
-            size=[vdensity,hdensity])
+    U = fill2D_with_nans(inarray=U,
+                         start=[1,1],
+                         size=[vdensity,hdensity])
+    V = fill2D_with_nans(inarray=V,
+                         start=[1,1],
+                         size=[vdensity,hdensity])
 
     Uzero = U - U
     Vzero = V - V
