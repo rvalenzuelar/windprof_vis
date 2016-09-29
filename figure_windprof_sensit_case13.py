@@ -9,14 +9,15 @@ Created on Mon Sep  5 17:03:35 2016
 import Windprof2 as wp
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import seaborn as sns
+import seaborn as sbn
 import numpy as np
 import pandas as pd
 from matplotlib.gridspec import GridSpecFromSubplotSpec as gssp
-from rv_utilities import add_colorbar
+from rv_utilities import add_colorbar, discrete_cmap
 from datetime import datetime
 import Meteoframes as mf
 
+# sbn.reset_defaults()
 
 
 from matplotlib import rcParams
@@ -47,37 +48,35 @@ czdh = czd.preciph[~czd.preciph.isnull()]
 
 
 ''' creates plot with seaborn style '''
-with sns.axes_style("white"):
-    sns.set_style('ticks',
-              {'xtick.direction': u'in',
-               'ytick.direction': u'in'}
-              )
+# with sns.axes_style("white"):
+#     sns.set_style('ticks',
+#               {'xtick.direction': u'in',
+#                'ytick.direction': u'in'}
+#               )
 
-    scale=1.3
-    plt.figure(figsize=(8*scale, 6*scale))
-    
-    gs0 = gridspec.GridSpec(2, 1,
-                            height_ratios=[1, 2],
-                            hspace=0.05,
-                            )
-    
-    axes = [plt.subplot(gs0[1]),
-            plt.subplot(gs0[0])
-            ]
+scale=1.3
+plt.figure(figsize=(8*scale, 6*scale))
+
+gs0 = gridspec.GridSpec(2, 1,
+                        height_ratios=[1, 2],
+                        hspace=0.05,
+                        )
+
+axes = [plt.subplot(gs0[1]),
+        plt.subplot(gs0[0])
+        ]
 
 
 wprof_range = ('2004-02-16 00:00','2004-02-18 23:00')
 
+tta_range = (
+                ('2004-02-16 11:00','2004-02-16 15:00'),
+                ('2004-02-16 09:00','2004-02-16 16:00'),
+                ('2004-02-16 07:00','2004-02-16 17:00'),
+                ('2004-02-16 09:00','2004-02-16 16:00'),
+               )
 
 ''' end time with one more hour to cover all previous hour '''
-tta_range = (
-                ('2004-02-16 09:00','2004-02-16 16:00'),
-                ('2004-02-16 09:00','2004-02-16 16:00'),
-                ('2004-02-16 09:00','2004-02-16 16:00'),
-                ('2004-02-16 13:00','2004-02-16 14:00'),
-                ('2004-02-16 11:00','2004-02-16 15:00'),
-                ('2004-02-16 07:00','2004-02-16 17:00'),
-               )
 
 ''' define ranges for tta and xpol time annotation '''
 times = [
@@ -95,15 +94,12 @@ for tta,time in zip(tta_range, times):
     drange = pd.date_range(start=wp_st,end=wp_en,freq='1H')
     time['tta'][0] = np.where(drange == tta[0])[0]
     time['tta'][1] = np.where(drange == tta[1])[0]
-times[3]['tta'][0] = None
 
 params = [
+            'WD$<140$, nh$\geq1\,(2,4)$',
             'WD$<150$, nh$\geq1$',
+            'WD$<160$, nh$\geq1$',
             'WD$<150$, nh$\geq2$',
-            'WD$<150$, nh$\geq4$',
-            '',
-            'WD$<140$, nh$\geq2$',
-            'WD$<160$, nh$\geq2$',
          ]
 
 
@@ -167,21 +163,23 @@ for c, ax in zip(case, axes):
                                         fc=ttacolor,
                                         linewidth=2)
                         )
-            ax.text(18,vpos2,p,ha='right',va='center')
+            ax.text(21,vpos2,p,ha='left',va='center')
         vpos2 -= 2.3
 
-    for st,en in [[0,1],[3,4]]:
-        ax.annotate('',
-                    xy=(st, -2),
-                    xytext=(en, -2),
-                    xycoords='data',
-                    textcoords='data',
-                    zorder=10000,
-                    arrowprops=dict(arrowstyle=arrstyle,
-                                    ec=ttacolor,
-                                    fc=ttacolor,
-                                    linewidth=2)
-                    )
+    " isolated hours "
+    for vp in [-4.3, -6.6]:
+        for st,en in [[0,1],[3,4]]:
+            ax.annotate('',
+                        xy=(st, vp),
+                        xytext=(en, vp),
+                        xycoords='data',
+                        textcoords='data',
+                        zorder=10000,
+                        arrowprops=dict(arrowstyle=arrstyle,
+                                        ec=ttacolor,
+                                        fc=ttacolor,
+                                        linewidth=2)
+                        )
 
 
     ''' determine xticks '''
@@ -207,12 +205,14 @@ for c, ax in zip(case, axes):
     ax.set_ylim([-13,30])
     ax.set_xlim([24,0])
 
-axes[1].plot(np.arange(0.5,24.5), czdh.values,'-o')
+cmap = discrete_cmap(7, base_cmap='Set1')
+axes[1].plot(np.arange(0.5,24.5), czdh.values,'-o',lw=2,color=cmap(1))
 add_colorbar(axes[1], im, invisible=True)
 axes[1].text(0.95,0.85,'16 February 2004',
              ha='right',weight='bold',fontsize=15,
              transform=axes[1].transAxes)
 axes[1].invert_xaxis()
+axes[1].grid(True)
 axes[1].set_xticks(range(0,23,3))
 axes[1].set_xlim([24,0])
 axes[1].set_xticklabels('')
