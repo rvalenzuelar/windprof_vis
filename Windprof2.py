@@ -514,14 +514,14 @@ def make_arrays(resolution='coarse', surface=False,
         dirr = p.DIR.values
         wdir[:, i] = dirr
 
-#    print wspd.shape
-    ''' add 2 bottom rows for adding surface obs '''
-    bottom_rows = 2
-    na = np.zeros((bottom_rows, ncols))
-    na[:] = np.nan
-    wspd = np.flipud(np.vstack((np.flipud(wspd), na)))
-    wdir = np.flipud(np.vstack((np.flipud(wdir), na)))
     if surface:
+        ''' add 2 bottom rows for adding surface obs '''
+        bottom_rows = 2
+        na = np.zeros((bottom_rows, ncols))
+        na[:] = np.nan
+        wspd = np.flipud(np.vstack((np.flipud(wspd), na)))
+        wdir = np.flipud(np.vstack((np.flipud(wdir), na)))
+
         ''' make surface arrays '''
         surface = get_surface_data(case, homedir=homedir+'/SURFACE')
         hour = pd.TimeGrouper('H')
@@ -532,7 +532,7 @@ def make_arrays(resolution='coarse', surface=False,
         wspd[0, surf_st:surf_en + 1] = surf_wspd
         wdir[0, surf_st:surf_en + 1] = surf_wdir
 
-    hgt = np.hstack(([0., 0.05], hgt))
+        hgt = np.hstack(([0., 0.05], hgt))
 
     ''' add last column for 00 UTC of last date '''
     add_left = 1
