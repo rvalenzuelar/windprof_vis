@@ -18,6 +18,7 @@ from datetime import datetime
 import Meteoframes as mf
 
 # sbn.reset_defaults()
+sbn.reset_orig()
 
 
 from matplotlib import rcParams
@@ -44,8 +45,12 @@ o = 'case{}_total_wind_{}.pdf'
 
 surf_file = '/Users/raulvalenzuela/Data/SURFACE/case13/czc04047.met'
 czd = mf.parse_surface(surf_file)
-czdh = czd.preciph[~czd.preciph.isnull()]
 
+surf_file = '/Users/raulvalenzuela/Data/SURFACE/case13/bby04047.met'
+bby = mf.parse_surface(surf_file)
+
+czdh = czd.preciph[~czd.preciph.isnull()]
+bbyh = bby.preciph[~bby.preciph.isnull()]
 
 ''' creates plot with seaborn style '''
 # with sns.axes_style("white"):
@@ -123,7 +128,9 @@ for c, ax in zip(case, axes):
                                     spd_range=[0, 30],
                                     spd_delta=2,
                                     cmap='jet',
-                                    cbar=(ax,cbar_inv)
+                                    cbar=(ax,cbar_inv),
+                                    cbar_label='meridional wind $['
+                                               'm\ s^{-1}]$'
                                     )
     
     wp.add_windstaff(wspd, wdir, time, hgt,
@@ -205,18 +212,29 @@ for c, ax in zip(case, axes):
     ax.set_ylim([-13,30])
     ax.set_xlim([24,0])
 
+
+axes[0].text(0.05,0.93,'Wind Profiler at BBY',
+             ha='left',weight='bold',fontsize=15,
+             color='k',backgroundcolor='w',
+             transform=axes[0].transAxes)
+
 cmap = discrete_cmap(7, base_cmap='Set1')
-axes[1].plot(np.arange(0.5,24.5), czdh.values,'-o',lw=2,color=cmap(1))
+axes[1].plot(np.arange(0.5,24.5), czdh.values,'-o',lw=2,
+             color=cmap(1), label='CZD')
+axes[1].plot(np.arange(0.5,24.5), bbyh.values,'-o',lw=2,
+             color=cmap(0),label='BBY')
+axes[1].legend(numpoints=1,loc=7)
+
 add_colorbar(axes[1], im, invisible=True)
 axes[1].text(0.95,0.85,'16 February 2004',
              ha='right',weight='bold',fontsize=15,
              transform=axes[1].transAxes)
 axes[1].invert_xaxis()
-axes[1].grid(True)
+# axes[1].grid(True)
 axes[1].set_xticks(range(0,23,3))
 axes[1].set_xlim([24,0])
 axes[1].set_xticklabels('')
-axes[1].set_ylabel('CZD rain rate [mm $h^{-1}$]')
+axes[1].set_ylabel('rain rate [mm $h^{-1}$]')
 
 plt.subplots_adjust(bottom=0.13, top=0.98)
 
@@ -224,6 +242,6 @@ plt.subplots_adjust(bottom=0.13, top=0.98)
 
 
 place = '/Users/raulvalenzuela/Documents/'
-fname = 'tta_sensit_case13.png'
+fname = 'sensit_case13.png'
 plt.savefig(place+fname, dpi=100, format='png',papertype='letter',
            bbox_inches='tight')

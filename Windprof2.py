@@ -107,7 +107,8 @@ def plot_single():
 def plot_time_height(ax=None, wspd=None, time=None, height=None,
                      spd_range=None,spd_delta=None, cmap=None,
                      title=None,cbar=None,cbarinvi=False,
-                     timelabstep=None,kind='pcolormesh'):
+                     timelabstep=None,kind='pcolormesh',
+                     cbar_label=None):
     
     ''' NOAA wind profiler files after year 2000 indicate
     the start time of averaging period; so a timestamp of
@@ -139,7 +140,7 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
    
     hcbar = add_colorbar(cbar[0], img,
                          loc       = 'right',
-                         label     = '$[m\ s^{-1}]$',
+                         label     = cbar_label,
                          labelpad  = 20,
                          fontsize  = 12,
                          invisible = cbar[1] )
