@@ -138,12 +138,12 @@ def plot_time_height(ax=None, wspd=None, time=None, height=None,
     else:
         img = ax.pcolormesh(x,y,wspdm,cmap=cmap, norm=norm)
    
-    hcbar = add_colorbar(cbar[0], img,
-                         loc       = 'right',
-                         label     = cbar_label,
-                         labelpad  = 20,
-                         fontsize  = 12,
-                         invisible = cbar[1] )
+    hcbar = add_colorbar(cbar, img,
+                         loc='right',
+                         label=cbar_label,
+                         labelpad=20,
+                         fontsize=12,
+                         invisible=cbarinvi)
 
     
     ax.set_xlim([-1.0, len(time) + 1.0])

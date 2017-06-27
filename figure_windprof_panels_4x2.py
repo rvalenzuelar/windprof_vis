@@ -102,7 +102,7 @@ xpol_range = (('2003-01-12 05:00', '2003-01-14 16:00'),
               )
 
 ''' end time with one more hour to cover all previous hour '''
-tta_range = (('2003-01-12 07:00', '2003-01-12 11:00'),
+tta_range = (('2003-01-12 07:00', '2003-01-12 16:00'),
              ('2003-01-21 07:00', '2003-01-22 11:00'),
              (None, None),
              ('2004-01-09 14:00', '2004-01-09 16:00'),
@@ -154,23 +154,24 @@ for c, ax in zip(case, axes):
     else:
         cbar_inv = True
 
-    wspdMerid = -wspd * cosd(wdir);
+    wspdMerid = -wspd * cosd(wdir)
 
     if c == 13:
         foo = wspdMerid
 
-    ax, hcbar = wp.plot_time_height(ax=ax,
+
+    ax, hcbar, img = wp.plot_time_height(ax=ax,
                                     wspd=wspdMerid,
                                     time=time,
                                     height=hgt,
                                     spd_range=[-5, 30],
                                     spd_delta=4,
                                     cmap='nipy_spectral',
-                                    cbar=(ax, cbar_inv)
+                                    cbar=ax,
+                                    cbarinvi=cbar_inv
                                     )
 
     wp.add_windstaff(wspd, wdir, time, hgt,
-                     #                     color       = (0.5,0.5,0.5),
                      color=(0.0, 0.0, 0.0),
                      ax=ax,
                      vdensity=2,
@@ -178,6 +179,11 @@ for c, ax in zip(case, axes):
                      head_size=0.07,
                      tail_length=4.5,
                      )
+
+    if c == 8:
+        ax.text(0.82, -0.04, '*', color='r',
+                fontsize=35, transform=ax.transAxes,
+                zorder=100000)
 
     ''' add arrow annotations '''
     vpos1 = -3.11
@@ -306,9 +312,9 @@ for c, ax in zip(case, axes):
 
 plt.subplots_adjust(left=0.01, bottom=0.03)
 
-# plt.show()
+plt.show()
 #
-fname = '/home/raul/Desktop/fig_windprof_panels.png'
-# fname='/Users/raulv/Desktop/fig_windprof_panels.png'
+# fname = '/home/raul/Desktop/fig_windprof_panels.png'
+fname='/Users/raulvalenzuela/Desktop/fig_windprof_panels.png'
 plt.savefig(fname, dpi=100, format='png', papertype='letter',
             bbox_inches='tight')
